@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from './lib/supabase'
 import { useProfile } from './hooks/useProfile'
+import { useRealtimePendingTransaction } from './hooks/useRealtime'
 import { Home } from './pages/Home'
 import { PhotoStep } from './pages/Onboarding/PhotoStep'
 import { PinStep } from './pages/Onboarding/PinStep'
+import { DepenseConfirmModal } from './components/invite/DepenseConfirmModal'
 import type { Session } from '@supabase/supabase-js'
 import type { Event, Profile } from './types'
 
@@ -23,6 +25,13 @@ export default function App() {
   const [coinPhotoUrl, setCoinPhotoUrl] = useState<string | null>(null)
 
   const { profile, loading: profileLoading, setProfile, refetch } = useProfile(session?.user?.id)
+  const [pendingTxId, setPendingTxId] = useState<string | null>(null)
+
+  const handlePendingTx = useCallback((txId: string) => {
+    setPendingTxId(txId)
+  }, [])
+
+  useRealtimePendingTransaction(session?.user?.id, handlePendingTx)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session: s } }) => {
@@ -107,11 +116,20 @@ export default function App() {
   }
 
   return (
-    <Home
-      profile={profile!}
-      events={events}
-      coinPhotoUrl={coinPhotoUrl}
-      onProfileUpdate={handleProfileUpdate}
-    />
+    <>
+      <Home
+        profile={profile!}
+        events={events}
+        coinPhotoUrl={coinPhotoUrl}
+        onProfileUpdate={handleProfileUpdate}
+      />
+      {pendingTxId && profile && (
+        <DepenseConfirmModal
+          transactionId={pendingTxId}
+          pinHash={profile.pin_hash}
+          onDone={() => { setPendingTxId(null); refetch() }}
+        />
+      )}
+    </>
   )
 }

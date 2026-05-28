@@ -2,6 +2,29 @@ import { useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Profile } from '../types'
 
+export function useRealtimeClassement(onInsert: () => void) {
+  useEffect(() => {
+    const channel = supabase
+      .channel('resultats-epreuves-classement')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'resultats_epreuves',
+        },
+        () => {
+          onInsert()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [onInsert])
+}
+
 export function useRealtimeSolde(
   userId: string | undefined,
   onUpdate: (profile: Profile) => void

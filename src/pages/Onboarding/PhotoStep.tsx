@@ -25,7 +25,7 @@ export function PhotoStep({ userId, onNext }: PhotoStepProps) {
     setError(null)
 
     const ext = file.name.split('.').pop()
-    const path = `avatars/${userId}.${ext}`
+    const path = `${userId}.${ext}`
 
     const { error: uploadError } = await supabase.storage
       .from('avatars')

@@ -141,32 +141,35 @@ function computeTeamSchedule(
   const N = sorted.length
   if (N < 2 || N % 2 !== 0 || monEquipe.numero === null) return []
   const half = N / 2
-  const stations = [...epreuves]
-    .sort((a, b) => (a.ordre ?? 999) - (b.ordre ?? 999))
-    .slice(0, half)
-  if (stations.length < half) return []
+  const sortedEp = [...epreuves].sort((a, b) => (a.ordre ?? 999) - (b.ordre ?? 999))
+  if (sortedEp.length === 0) return []
 
   const isOdd = monEquipe.numero % 2 !== 0
   const teamGroupIdx = isOdd
     ? Math.floor((monEquipe.numero - 1) / 2)
     : Math.floor(monEquipe.numero / 2) - 1
 
-  const result = []
-  for (let r = 0; r < half; r++) {
-    let stationIdx: number
-    if (isOdd) {
-      stationIdx = ((teamGroupIdx - r) % half + half) % half
-    } else {
-      stationIdx = (teamGroupIdx + r) % half
+  const result: Array<{ tour: number; epreuve: Epreuve; adversaire: Equipe }> = []
+  let globalTour = 1
+
+  for (let batchStart = 0; batchStart < sortedEp.length; batchStart += half) {
+    const batchEp = sortedEp.slice(batchStart, batchStart + half)
+    for (let r = 0; r < half; r++) {
+      const stationIdx = isOdd
+        ? ((teamGroupIdx - r) % half + half) % half
+        : (teamGroupIdx + r) % half
+
+      if (stationIdx < batchEp.length) {
+        const epreuve = batchEp[stationIdx]
+        const oddIdx = (stationIdx + r) % half
+        const evenIdx = ((stationIdx - r) % half + half) % half
+        const adversaire = isOdd ? sorted[2 * evenIdx + 1] : sorted[2 * oddIdx]
+        result.push({ tour: globalTour, epreuve, adversaire })
+      }
+      globalTour++
     }
-    const epreuve = stations[stationIdx]
-
-    const oddIdx = (stationIdx + r) % half
-    const evenIdx = ((stationIdx - r) % half + half) % half
-    const adversaire = isOdd ? sorted[2 * evenIdx + 1] : sorted[2 * oddIdx]
-
-    result.push({ tour: r + 1, epreuve, adversaire })
   }
+
   return result
 }
 

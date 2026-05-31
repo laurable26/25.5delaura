@@ -6,6 +6,7 @@ import { ProfilTab } from '../components/invite/ProfilTab'
 import { RolesTab } from '../components/admin/general/RolesTab'
 import { EventsTab } from '../components/admin/general/EventsTab'
 import { BonusTab } from '../components/admin/general/BonusTab'
+import { AccesUtilesTab } from '../components/admin/general/AccesUtilesTab'
 import { EpreuvesTab } from '../components/admin/jeux/EpreuvesTab'
 import { RotationsTab } from '../components/admin/jeux/RotationsTab'
 import { ClassementTab } from '../components/admin/jeux/ClassementTab'
@@ -108,6 +109,21 @@ export function Home({ profile, onProfileUpdate, onLogout }: HomeProps) {
                   <>
                     <Header title="🎪 Événements" showBack />
                     <EventsTab />
+                  </>
+                }
+              />
+            }
+          />
+          <Route
+            path="/admin/accesutiles"
+            element={
+              <GuardedRoute
+                profile={profile}
+                requiredRoles={['admin_general']}
+                element={
+                  <>
+                    <Header title="🔓 Accès utiles" showBack />
+                    <AccesUtilesTab />
                   </>
                 }
               />

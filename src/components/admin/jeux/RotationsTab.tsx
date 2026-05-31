@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../../lib/supabase'
-import type { Equipe, Epreuve } from '../../../types'
+import type { Epreuve, Equipe } from '../../../types'
 
 interface Matchup {
   odd: Equipe
@@ -8,32 +8,41 @@ interface Matchup {
   epreuve: Epreuve
 }
 
-function computeSchedule(equipes: Equipe[], epreuves: Epreuve[]): Matchup[][] {
+interface TourEntry {
+  tourNum: number
+  matchups: Matchup[]
+}
+
+function computeSchedule(equipes: Equipe[], epreuves: Epreuve[]): TourEntry[] {
   const sorted = [...equipes]
     .filter((e) => e.numero !== null)
     .sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
   const N = sorted.length
   if (N < 2 || N % 2 !== 0) return []
   const half = N / 2
-  const stations = [...epreuves]
-    .sort((a, b) => (a.ordre ?? 999) - (b.ordre ?? 999))
-    .slice(0, half)
-  if (stations.length < half) return []
+  const sortedEp = [...epreuves].sort((a, b) => (a.ordre ?? 999) - (b.ordre ?? 999))
+  if (sortedEp.length === 0) return []
 
-  const schedule: Matchup[][] = []
-  for (let r = 0; r < half; r++) {
-    const round: Matchup[] = []
-    for (let s = 0; s < half; s++) {
-      const oddIdx = (s + r) % half
-      const evenIdx = ((s - r) % half + half) % half
-      round.push({
-        odd: sorted[2 * oddIdx],
-        even: sorted[2 * evenIdx + 1],
-        epreuve: stations[s],
-      })
+  const schedule: TourEntry[] = []
+  let globalTour = 1
+
+  for (let batchStart = 0; batchStart < sortedEp.length; batchStart += half) {
+    const batchEp = sortedEp.slice(batchStart, batchStart + half)
+    for (let r = 0; r < half; r++) {
+      const matchups: Matchup[] = []
+      for (let s = 0; s < batchEp.length; s++) {
+        const oddIdx = (s + r) % half
+        const evenIdx = ((s - r) % half + half) % half
+        matchups.push({
+          odd: sorted[2 * oddIdx],
+          even: sorted[2 * evenIdx + 1],
+          epreuve: batchEp[s],
+        })
+      }
+      schedule.push({ tourNum: globalTour++, matchups })
     }
-    schedule.push(round)
   }
+
   return schedule
 }
 
@@ -73,18 +82,20 @@ export function RotationsTab() {
     warnings.push(`${equipesWithoutNum.length} équipe(s) sans numéro : ${equipesWithoutNum.map((e) => e.nom).join(', ')}`)
   if (N > 0 && N % 2 !== 0)
     warnings.push('Le nombre d\'équipes numérotées doit être pair.')
-  if (epreuves.length < half && N >= 2)
-    warnings.push(`Il faut au moins ${half} épreuve(s) pour ${N} équipes (actuellement ${epreuves.length}).`)
+  if (epreuves.length > 0 && N >= 2 && epreuves.length % half !== 0)
+    warnings.push(`${epreuves.length} épreuves pour ${N} équipes (${half} stations) : le dernier groupe aura des tours inégaux.`)
 
   const schedule = computeSchedule(equipesWithNum, epreuves)
+  const totalTours = schedule.length
+  const batches = Math.ceil(epreuves.length / (half || 1))
 
   return (
     <div className="flex flex-col gap-4 px-4 pt-6 pb-28">
       <div>
         <h2 className="font-bangers text-purple-dark text-2xl tracking-wide">Rotations</h2>
-        {N >= 2 && N % 2 === 0 && (
+        {N >= 2 && N % 2 === 0 && epreuves.length > 0 && (
           <p className="font-nunito text-purple-mid text-sm mt-1">
-            {N} équipes · {half} stations · {half} tours
+            {N} équipes · {epreuves.length} épreuves · {totalTours} tours ({batches} groupes de {half})
           </p>
         )}
       </div>
@@ -101,34 +112,45 @@ export function RotationsTab() {
         </p>
       )}
 
-      {schedule.map((round, r) => (
-        <div key={r} className="bg-white rounded-card border border-border overflow-hidden">
-          <div className="px-4 py-2 bg-purple-dark">
-            <p className="font-bangers text-yellow-fest text-lg tracking-wide">Tour {r + 1}</p>
-          </div>
-          <div className="divide-y divide-border">
-            {round.map((m, s) => (
-              <div key={s} className="px-4 py-3 flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-purple-mid bg-opacity-20 flex items-center justify-center flex-shrink-0">
-                  <span className="font-bangers text-purple-dark text-xs">{s + 1}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-nunito text-xs text-purple-mid truncate">{m.epreuve.nom}</p>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="font-nunito font-bold text-purple-dark text-sm">
-                      #{m.odd.numero} {m.odd.nom}
-                    </span>
-                    <span className="font-bangers text-pink-fluo text-sm">vs</span>
-                    <span className="font-nunito font-bold text-purple-dark text-sm">
-                      #{m.even.numero} {m.even.nom}
-                    </span>
-                  </div>
-                </div>
+      {schedule.map(({ tourNum, matchups }) => {
+        const batchIndex = Math.floor((tourNum - 1) / half)
+        const isFirstOfBatch = (tourNum - 1) % half === 0
+        return (
+          <div key={tourNum}>
+            {isFirstOfBatch && batches > 1 && (
+              <p className="font-bangers text-purple-mid text-base tracking-wide px-1 pb-1">
+                Groupe {batchIndex + 1} — Épreuves {batchIndex * half + 1}–{Math.min((batchIndex + 1) * half, epreuves.length)}
+              </p>
+            )}
+            <div className="bg-white rounded-card border border-border overflow-hidden">
+              <div className="px-4 py-2 bg-purple-dark">
+                <p className="font-bangers text-yellow-fest text-lg tracking-wide">Tour {tourNum}</p>
               </div>
-            ))}
+              <div className="divide-y divide-border">
+                {matchups.map((m, s) => (
+                  <div key={s} className="px-4 py-3 flex items-center gap-3">
+                    <div className="w-5 h-5 rounded-full bg-purple-mid bg-opacity-20 flex items-center justify-center flex-shrink-0">
+                      <span className="font-bangers text-purple-dark text-xs">{s + 1}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-nunito text-xs text-purple-mid truncate">{m.epreuve.nom}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="font-nunito font-bold text-purple-dark text-sm">
+                          #{m.odd.numero} {m.odd.nom}
+                        </span>
+                        <span className="font-bangers text-pink-fluo text-sm">vs</span>
+                        <span className="font-nunito font-bold text-purple-dark text-sm">
+                          #{m.even.numero} {m.even.nom}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

@@ -41,7 +41,6 @@ export function ClassementTab() {
       const userTotals = (profiles as Profile[])
         .map((p) => ({ profile: p, total: p.solde }))
         .sort((a, b) => b.total - a.total)
-        .slice(0, 10)
       setUserClassement(userTotals)
     }
 
@@ -94,10 +93,6 @@ export function ClassementTab() {
             <span className="font-bangers text-2xl text-purple-mid w-8 text-center">
               {medal(i)}
             </span>
-            <div
-              className="w-3 h-8 rounded-full flex-shrink-0"
-              style={{ backgroundColor: entry.equipe.couleur ?? '#8B6BAE' }}
-            />
             <p className="font-nunito font-bold text-purple-dark flex-1">{entry.equipe.nom}</p>
             <p className="font-bangers text-xl text-purple-dark">{entry.total} B</p>
           </div>
@@ -111,7 +106,7 @@ export function ClassementTab() {
 
       {/* Top utilisateurs */}
       <div className="flex flex-col gap-3">
-        <h3 className="font-bangers text-purple-dark text-xl tracking-wide">Top Invités</h3>
+        <h3 className="font-bangers text-purple-dark text-xl tracking-wide">Classement individuel</h3>
         {userClassement.map((entry, i) => (
           <div
             key={entry.profile.id}

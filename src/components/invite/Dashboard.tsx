@@ -1,5 +1,6 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { supabase } from '../../lib/supabase'
 import { TransferModal } from './TransferModal'
 import { useRealtimeSolde } from '../../hooks/useRealtime'
 import type { Profile, UserRole } from '../../types'
@@ -18,13 +19,14 @@ interface AccesItem {
   emoji: string
   action: 'navigate' | 'external' | 'transfer'
   target?: string
+  flagKey?: string
 }
 
 const BASE_ITEMS: AccesItem[] = [
-  { label: 'Laurapiades',              emoji: '🏆', action: 'navigate', target: '/laurapiades' },
-  { label: 'Rejoindre la jam Spotify', emoji: '🎵', action: 'external', target: SPOTIFY_JAM_URL },
-  { label: 'Rejoindre le POV',         emoji: '🎬', action: 'external', target: POV_URL },
-  { label: 'Transférer des Blerhams',  emoji: '💸', action: 'transfer' },
+  { label: 'Laurapiades',              emoji: '🏆', action: 'navigate', target: '/laurapiades', flagKey: 'laurapiades' },
+  { label: 'Rejoindre la jam Spotify', emoji: '🎵', action: 'external', target: SPOTIFY_JAM_URL, flagKey: 'spotify' },
+  { label: 'Rejoindre le POV',         emoji: '🎬', action: 'external', target: POV_URL, flagKey: 'pov' },
+  { label: 'Transférer des Blerhams',  emoji: '💸', action: 'transfer', flagKey: 'transfert' },
 ]
 
 const JEUX_ITEMS: AccesItem[] = [
@@ -40,9 +42,9 @@ const VENTES_ITEMS: AccesItem[] = [
 ]
 
 const GENERAL_ITEMS: AccesItem[] = [
-  { label: 'Admin : Rôles',        emoji: '👑', action: 'navigate', target: '/admin/roles' },
-  { label: 'Admin : Événements',   emoji: '🎪', action: 'navigate', target: '/admin/events' },
-  { label: 'Admin : Bonus / Malus',emoji: '⚡', action: 'navigate', target: '/admin/bonus' },
+  { label: 'Admin : Rôles',         emoji: '👑', action: 'navigate', target: '/admin/roles' },
+  { label: 'Admin : Accès utiles',  emoji: '🔓', action: 'navigate', target: '/admin/accesutiles' },
+  { label: 'Admin : Bonus / Malus', emoji: '⚡', action: 'navigate', target: '/admin/bonus' },
 ]
 
 function getItems(role: UserRole): AccesItem[] {
@@ -54,6 +56,7 @@ function getItems(role: UserRole): AccesItem[] {
 
 export function Dashboard({ profile, onProfileUpdate }: DashboardProps) {
   const [showTransfer, setShowTransfer] = useState(false)
+  const [flags, setFlags] = useState<Record<string, boolean>>({})
   const navigate = useNavigate()
 
   const handleUpdate = useCallback((updated: Profile) => {
@@ -61,6 +64,12 @@ export function Dashboard({ profile, onProfileUpdate }: DashboardProps) {
   }, [onProfileUpdate])
 
   useRealtimeSolde(profile.id, handleUpdate)
+
+  useEffect(() => {
+    supabase.from('feature_flags').select('key, enabled').then(({ data }) => {
+      if (data) setFlags(Object.fromEntries(data.map((f) => [f.key, f.enabled])))
+    })
+  }, [])
 
   function handleTransferSuccess(newSolde: number) {
     setShowTransfer(false)
@@ -77,7 +86,10 @@ export function Dashboard({ profile, onProfileUpdate }: DashboardProps) {
     }
   }
 
-  const items = getItems(profile.role)
+  const isAdmin = profile.role !== 'invite'
+  const items = getItems(profile.role).filter(
+    (item) => isAdmin || !item.flagKey || flags[item.flagKey] !== false
+  )
 
   return (
     <div className="flex flex-col gap-6 px-4 pt-6 pb-10">

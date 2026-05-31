@@ -13,6 +13,12 @@ export function BonusTab() {
   const [recentTransactions, setRecentTransactions] = useState<(Transaction & { prenom?: string })[]>([])
   const [loading, setLoading] = useState(true)
 
+  // Mass bonus/malus
+  const [massMontant, setMassMontant] = useState('')
+  const [massDescription, setMassDescription] = useState('')
+  const [massSubmitting, setMassSubmitting] = useState(false)
+  const [massSuccess, setMassSuccess] = useState<string | null>(null)
+
   useEffect(() => {
     async function load() {
       setLoading(true)
@@ -84,6 +90,43 @@ export function BonusTab() {
       }
     }
     setSubmitting(false)
+  }
+
+  async function handleMassSubmit() {
+    const montantNum = parseFloat(massMontant)
+    if (isNaN(montantNum) || montantNum === 0) return
+    setMassSubmitting(true)
+    setError(null)
+    setMassSuccess(null)
+    const results = await Promise.all(
+      profiles.map((p) =>
+        supabase.rpc('appliquer_bonus_malus', {
+          p_user_id: p.id,
+          p_montant: montantNum,
+          p_description: massDescription.trim() || null,
+        })
+      )
+    )
+    const firstErr = results.find((r) => r.error)
+    if (firstErr?.error) {
+      setError(firstErr.error.message)
+    } else {
+      const typeLabel = montantNum > 0 ? 'Bonus' : 'Malus'
+      setMassSuccess(`${typeLabel} de ${Math.abs(montantNum)}B appliqué à ${profiles.length} personnes !`)
+      setMassMontant('')
+      setMassDescription('')
+      const { data: txData } = await supabase
+        .from('transactions')
+        .select('*')
+        .in('type', ['bonus', 'malus'])
+        .order('created_at', { ascending: false })
+        .limit(20)
+      if (txData) {
+        const enriched = txData.map((tx) => ({ ...tx, prenom: profiles.find((pr) => pr.id === tx.receveur_id)?.prenom }))
+        setRecentTransactions(enriched)
+      }
+    }
+    setMassSubmitting(false)
   }
 
   if (loading) {
@@ -158,6 +201,45 @@ export function BonusTab() {
           className="py-3 rounded-btn bg-pink-fluo text-white font-nunito font-bold text-base disabled:opacity-50 active:opacity-80"
         >
           {submitting ? 'Application...' : 'Appliquer ⚡'}
+        </button>
+      </div>
+
+      {/* Bonus/Malus en masse */}
+      <div className="bg-white rounded-card border border-border p-4 flex flex-col gap-3">
+        <p className="font-bangers text-purple-dark text-lg tracking-wide">⚡ Tout le monde</p>
+        <div>
+          <label className="font-nunito text-purple-dark text-sm font-bold block mb-1">
+            Montant <span className="font-normal text-purple-mid">(positif = bonus, négatif = malus)</span>
+          </label>
+          <input
+            type="number"
+            placeholder="ex: 50 ou -20"
+            value={massMontant}
+            onChange={(e) => setMassMontant(e.target.value)}
+            className="w-full border border-border rounded-btn px-3 py-2 font-nunito text-purple-dark text-sm bg-bg-main"
+          />
+        </div>
+        <div>
+          <label className="font-nunito text-purple-dark text-sm font-bold block mb-1">
+            Description <span className="font-normal text-purple-mid">(optionnel)</span>
+          </label>
+          <input
+            type="text"
+            placeholder="Raison..."
+            value={massDescription}
+            onChange={(e) => setMassDescription(e.target.value)}
+            className="w-full border border-border rounded-btn px-3 py-2 font-nunito text-purple-dark text-sm bg-bg-main"
+          />
+        </div>
+        {massSuccess && (
+          <p className="font-nunito text-green-700 text-sm bg-green-50 border border-green-200 rounded-btn px-3 py-2">{massSuccess}</p>
+        )}
+        <button
+          onClick={handleMassSubmit}
+          disabled={massSubmitting || !massMontant}
+          className="py-3 rounded-btn bg-yellow-fest text-purple-dark font-nunito font-bold text-base disabled:opacity-50 active:opacity-80"
+        >
+          {massSubmitting ? `Application (0/${profiles.length})...` : `Appliquer à tous (${profiles.length} personnes)`}
         </button>
       </div>
 

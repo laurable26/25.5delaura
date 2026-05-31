@@ -3,10 +3,10 @@ import { supabase } from '../../../lib/supabase'
 import { hashPin } from '../../../lib/bcrypt'
 import type { Profile, UserRole } from '../../../types'
 
-async function createGuest(prenom: string, initialPin: string): Promise<string | null> {
+async function callEdge(slug: string, body: Record<string, unknown>): Promise<string | null> {
   const { data: { session } } = await supabase.auth.getSession()
   const res = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-guest`,
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${slug}`,
     {
       method: 'POST',
       headers: {
@@ -14,7 +14,7 @@ async function createGuest(prenom: string, initialPin: string): Promise<string |
         'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${session?.access_token ?? ''}`,
       },
-      body: JSON.stringify({ prenom, initial_pin: initialPin }),
+      body: JSON.stringify(body),
     }
   )
   const json = await res.json()
@@ -51,21 +51,18 @@ export function RolesTab() {
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
 
-  useEffect(() => {
-    load()
-  }, [])
+  // Delete state
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
+
+  useEffect(() => { load() }, [])
 
   async function load() {
     setLoading(true)
     const { data, error: fetchError } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('prenom')
-    if (fetchError) {
-      setError(fetchError.message)
-    } else {
-      setProfiles(data ?? [])
-    }
+      .from('profiles').select('*').order('prenom')
+    if (fetchError) setError(fetchError.message)
+    else setProfiles(data ?? [])
     setLoading(false)
   }
 
@@ -73,14 +70,9 @@ export function RolesTab() {
     setUpdating(userId)
     setError(null)
     const { error: updateError } = await supabase
-      .from('profiles')
-      .update({ role: newRole })
-      .eq('id', userId)
-    if (updateError) {
-      setError(updateError.message)
-    } else {
-      setProfiles((prev) => prev.map((p) => p.id === userId ? { ...p, role: newRole } : p))
-    }
+      .from('profiles').update({ role: newRole }).eq('id', userId)
+    if (updateError) setError(updateError.message)
+    else setProfiles((prev) => prev.map((p) => p.id === userId ? { ...p, role: newRole } : p))
     setUpdating(null)
   }
 
@@ -89,36 +81,37 @@ export function RolesTab() {
     setEditPrenom(profile.prenom)
     setEditPin('')
     setEditError(null)
+    setConfirmDeleteId(null)
   }
 
   async function handleSaveEdit(userId: string) {
     if (!editPrenom.trim()) return
-    if (editPin && !/^\d{4}$/.test(editPin)) {
-      setEditError('Le code doit être 4 chiffres')
-      return
-    }
+    if (editPin && !/^\d{4}$/.test(editPin)) { setEditError('Le code doit être 4 chiffres'); return }
     setEditSaving(true)
     setEditError(null)
-
     const updates: Record<string, unknown> = { prenom: editPrenom.trim() }
-    if (editPin) {
-      updates.pin_hash = await hashPin(editPin)
-    }
-
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', userId)
-
+    if (editPin) updates.pin_hash = await hashPin(editPin)
+    const { error: updateError } = await supabase.from('profiles').update(updates).eq('id', userId)
     if (updateError) {
       setEditError(updateError.message)
     } else {
-      setProfiles((prev) =>
-        prev.map((p) => p.id === userId ? { ...p, prenom: editPrenom.trim() } : p)
-      )
+      setProfiles((prev) => prev.map((p) => p.id === userId ? { ...p, prenom: editPrenom.trim() } : p))
       setEditingId(null)
     }
     setEditSaving(false)
+  }
+
+  async function handleDelete(userId: string) {
+    setDeleting(true)
+    setError(null)
+    const err = await callEdge('delete-user', { user_id: userId })
+    if (err) {
+      setError(err)
+    } else {
+      setProfiles((prev) => prev.filter((p) => p.id !== userId))
+      setConfirmDeleteId(null)
+    }
+    setDeleting(false)
   }
 
   async function handleCreate(e: React.FormEvent) {
@@ -128,7 +121,7 @@ export function RolesTab() {
     setCreating(true)
     setCreateError(null)
     setCreateSuccess(null)
-    const err = await createGuest(newPrenom.trim(), newPin)
+    const err = await callEdge('create-guest', { prenom: newPrenom.trim(), initial_pin: newPin })
     if (err) {
       setCreateError(err)
     } else {
@@ -196,10 +189,36 @@ export function RolesTab() {
       <div className="flex flex-col gap-3">
         {profiles.map((profile) => {
           const isEditing = editingId === profile.id
+          const isConfirmingDelete = confirmDeleteId === profile.id
           return (
             <div key={profile.id} className="bg-white rounded-card border border-border p-4 flex flex-col gap-3">
+
+              {/* Confirmation suppression */}
+              {isConfirmingDelete && (
+                <div className="bg-red-50 border border-red-200 rounded-btn p-3 flex items-center justify-between gap-3">
+                  <p className="font-nunito text-red-600 text-sm">
+                    Supprimer <strong>{profile.prenom}</strong> définitivement ?
+                  </p>
+                  <div className="flex gap-2 flex-shrink-0">
+                    <button
+                      onClick={() => handleDelete(profile.id)}
+                      disabled={deleting}
+                      className="px-3 py-1 rounded-btn bg-red-500 text-white font-nunito font-bold text-xs disabled:opacity-50"
+                    >
+                      {deleting ? '...' : 'Supprimer'}
+                    </button>
+                    <button
+                      onClick={() => setConfirmDeleteId(null)}
+                      className="px-3 py-1 rounded-btn bg-bg-main border border-border font-nunito text-purple-mid text-xs"
+                    >
+                      Annuler
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Header ligne */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 {profile.photo_url ? (
                   <img src={profile.photo_url} alt={profile.prenom} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
                 ) : (
@@ -223,6 +242,12 @@ export function RolesTab() {
                   className="w-7 h-7 flex items-center justify-center rounded bg-bg-main border border-border text-purple-mid text-sm active:opacity-60 flex-shrink-0"
                 >
                   {isEditing ? '✕' : '✏️'}
+                </button>
+                <button
+                  onClick={() => { setConfirmDeleteId(isConfirmingDelete ? null : profile.id); setEditingId(null) }}
+                  className="w-7 h-7 flex items-center justify-center rounded bg-bg-main border border-red-200 text-red-400 text-sm active:opacity-60 flex-shrink-0"
+                >
+                  🗑️
                 </button>
               </div>
 

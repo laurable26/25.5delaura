@@ -7,7 +7,7 @@ import { PhotoStep } from './pages/Onboarding/PhotoStep'
 import { PinStep } from './pages/Onboarding/PinStep'
 import { DepenseConfirmModal } from './components/invite/DepenseConfirmModal'
 import type { Session } from '@supabase/supabase-js'
-import type { Event, Profile } from './types'
+import type { Profile } from './types'
 
 type OnboardingStep = 'photo' | 'pin' | 'done'
 
@@ -21,7 +21,6 @@ function getOnboardingStep(profile: { photo_url: string | null; pin_hash: string
 export default function App() {
   const [session, setSession] = useState<Session | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
-  const [events, setEvents] = useState<Event[]>([])
   const [coinPhotoUrl, setCoinPhotoUrl] = useState<string | null>(null)
 
   const { profile, loading: profileLoading, setProfile, refetch } = useProfile(session?.user?.id)
@@ -50,14 +49,6 @@ export default function App() {
   useEffect(() => {
     if (!session) return
 
-    async function loadEvents() {
-      const { data } = await supabase
-        .from('events')
-        .select('*')
-        .order('ordre')
-      setEvents(data ?? [])
-    }
-
     async function loadCoinPhoto() {
       const { data } = supabase.storage
         .from('assets')
@@ -65,7 +56,6 @@ export default function App() {
       setCoinPhotoUrl(data.publicUrl)
     }
 
-    loadEvents()
     loadCoinPhoto()
   }, [session])
 
@@ -119,7 +109,6 @@ export default function App() {
     <>
       <Home
         profile={profile!}
-        events={events}
         coinPhotoUrl={coinPhotoUrl}
         onProfileUpdate={handleProfileUpdate}
       />

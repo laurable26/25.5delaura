@@ -10,11 +10,10 @@ import { EpreuvesTab } from '../components/admin/jeux/EpreuvesTab'
 import { ClassementTab } from '../components/admin/jeux/ClassementTab'
 import { CatalogueTab } from '../components/admin/ventes/CatalogueTab'
 import { DepenseTab } from '../components/admin/ventes/DepenseTab'
-import type { Profile, Event, UserRole } from '../types'
+import type { Profile, UserRole } from '../types'
 
 interface HomeProps {
   profile: Profile
-  events: Event[]
   coinPhotoUrl?: string | null
   onProfileUpdate: (p: Profile) => void
 }
@@ -36,7 +35,7 @@ function GuardedRoute({ profile, requiredRoles, element }: GuardedRouteProps) {
   return element
 }
 
-export function Home({ profile, events, coinPhotoUrl, onProfileUpdate }: HomeProps) {
+export function Home({ profile, coinPhotoUrl, onProfileUpdate }: HomeProps) {
   return (
     <div className="min-h-screen bg-bg-main">
       <div className="mx-auto max-w-mobile min-h-screen relative">
@@ -45,10 +44,14 @@ export function Home({ profile, events, coinPhotoUrl, onProfileUpdate }: HomePro
             path="/"
             element={
               <>
-                <Header title="Blerham 🎪" subtitle={`Bonjour ${profile.prenom} !`} />
+                <Header
+                  title="25.5 de Laura"
+                  subtitle={`Bonjour ${profile.prenom} !`}
+                  profilePhotoUrl={profile.photo_url}
+                  profilePrenom={profile.prenom}
+                />
                 <Dashboard
                   profile={profile}
-                  events={events}
                   coinPhotoUrl={coinPhotoUrl}
                   onProfileUpdate={onProfileUpdate}
                 />

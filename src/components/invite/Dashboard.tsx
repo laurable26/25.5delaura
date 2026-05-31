@@ -1,21 +1,38 @@
 import { useState, useCallback } from 'react'
-import { BlerhamCoin } from '../ui/BlerhamCoin'
-import { EventCard } from '../ui/EventCard'
+import { useNavigate } from 'react-router-dom'
 import { TransferModal } from './TransferModal'
 import { TransferAnimation } from '../ui/TransferAnimation'
 import { useRealtimeSolde } from '../../hooks/useRealtime'
-import type { Profile, Event } from '../../types'
+import type { Profile } from '../../types'
+
+// Mets à jour ces liens quand tu as les URLs définitives
+const SPOTIFY_JAM_URL = 'https://open.spotify.com'
+const POV_URL = 'https://photos.google.com'
 
 interface DashboardProps {
   profile: Profile
-  events: Event[]
   coinPhotoUrl?: string | null
   onProfileUpdate: (p: Profile) => void
 }
 
-export function Dashboard({ profile, events, coinPhotoUrl, onProfileUpdate }: DashboardProps) {
+interface AccesItem {
+  label: string
+  emoji: string
+  action: 'navigate' | 'external' | 'transfer'
+  target?: string
+}
+
+const ACCES_UTILES: AccesItem[] = [
+  { label: 'Laurapiades',           emoji: '🏆', action: 'navigate',  target: '/laurapiades' },
+  { label: 'Rejoindre la jam Spotify', emoji: '🎵', action: 'external', target: SPOTIFY_JAM_URL },
+  { label: 'Rejoindre le POV',      emoji: '🎬', action: 'external',  target: POV_URL },
+  { label: 'Transférer des Blerhams', emoji: '💸', action: 'transfer' },
+]
+
+export function Dashboard({ profile, coinPhotoUrl, onProfileUpdate }: DashboardProps) {
   const [showTransfer, setShowTransfer] = useState(false)
   const [animation, setAnimation] = useState<{ from: number; to: number } | null>(null)
+  const navigate = useNavigate()
 
   const handleUpdate = useCallback((updated: Profile) => {
     onProfileUpdate(updated)
@@ -28,35 +45,41 @@ export function Dashboard({ profile, events, coinPhotoUrl, onProfileUpdate }: Da
     setAnimation({ from: profile.solde, to: newSolde })
   }
 
+  function handleAcces(item: AccesItem) {
+    if (item.action === 'navigate' && item.target) {
+      navigate(item.target)
+    } else if (item.action === 'external' && item.target) {
+      window.open(item.target, '_blank', 'noopener,noreferrer')
+    } else if (item.action === 'transfer') {
+      setShowTransfer(true)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6 px-4 pt-6 pb-28">
       {/* Solde */}
-      <div className="bg-white rounded-card-lg border border-border p-6 flex flex-col items-center gap-4 shadow-sm">
-        <BlerhamCoin size={96} photoUrl={coinPhotoUrl} />
-        <div className="text-center">
-          <p className="font-nunito text-purple-mid text-sm">Ton solde</p>
-          <p className="font-bangers text-purple-dark text-5xl tracking-wide leading-none mt-1">
-            {profile.solde}
-          </p>
-          <p className="font-nunito font-bold text-purple-mid text-lg">Blerhams</p>
-        </div>
-        <button
-          onClick={() => setShowTransfer(true)}
-          className="w-full py-3 rounded-btn bg-pink-fluo text-white font-nunito font-bold text-base active:opacity-80 transition-opacity"
-        >
-          💸 Transférer des Blerhams
-        </button>
+      <div className="bg-white rounded-card-lg border border-border p-6 text-center shadow-sm">
+        <p className="font-nunito text-purple-mid text-sm">Solde actuel</p>
+        <p className="font-bangers text-purple-dark text-6xl tracking-wide leading-tight mt-1">
+          {profile.solde} <span className="text-4xl">B</span>
+        </p>
       </div>
 
-      {/* Événements */}
-      {events.length > 0 && (
-        <div className="flex flex-col gap-3">
-          <h2 className="font-bangers text-purple-dark text-xl tracking-wide">Événements</h2>
-          {events.map((event) => (
-            <EventCard key={event.id} event={event} />
-          ))}
-        </div>
-      )}
+      {/* Accès utiles */}
+      <div className="flex flex-col gap-3">
+        <h2 className="font-bangers text-purple-dark text-xl tracking-wide">Accès utiles</h2>
+        {ACCES_UTILES.map((item) => (
+          <button
+            key={item.label}
+            onClick={() => handleAcces(item)}
+            className="w-full flex items-center gap-4 bg-white rounded-card border border-border px-4 py-4 active:bg-bg-main transition-colors text-left"
+          >
+            <span className="text-2xl">{item.emoji}</span>
+            <span className="font-nunito font-bold text-purple-dark text-base">{item.label}</span>
+            <span className="ml-auto text-purple-mid text-lg">›</span>
+          </button>
+        ))}
+      </div>
 
       {showTransfer && (
         <TransferModal

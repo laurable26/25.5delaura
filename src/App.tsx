@@ -102,6 +102,7 @@ export default function App() {
         profile={profile!}
         coinPhotoUrl={coinPhotoUrl}
         onProfileUpdate={handleProfileUpdate}
+        onLogout={() => setSession(null)}
       />
       {pendingTxId && profile && (
         <DepenseConfirmModal

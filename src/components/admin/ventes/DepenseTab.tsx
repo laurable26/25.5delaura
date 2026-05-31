@@ -240,48 +240,72 @@ export function DepenseTab() {
           </div>
         )}
 
-        <div className="flex flex-col gap-2">
-          <h3 className="font-bangers text-purple-dark text-xl tracking-wide">Produits</h3>
-          {products.map((product) => {
-            const item = orderItems.find((i) => i.product.id === product.id)
-            const qty = item?.qty ?? 0
-            return (
-              <div
-                key={product.id}
-                className="bg-white rounded-card border border-border p-3 flex items-center gap-3"
-              >
-                <span className="text-2xl flex-shrink-0">{product.emoji ?? '📦'}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="font-nunito font-bold text-purple-dark text-sm truncate">{product.nom}</p>
-                  <p className="font-nunito text-purple-mid text-xs">
-                    {product.prix_blerhams}B · Stock: {product.stock}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleQtyChange(product, -1)}
-                    disabled={qty === 0}
-                    className="w-8 h-8 rounded-btn bg-bg-main border border-border font-nunito font-bold text-purple-dark disabled:opacity-30 active:opacity-80"
-                  >
-                    −
-                  </button>
-                  <span className="font-bangers text-purple-dark text-lg w-6 text-center">{qty}</span>
-                  <button
-                    onClick={() => handleQtyChange(product, 1)}
-                    disabled={qty >= product.stock}
-                    className="w-8 h-8 rounded-btn bg-bg-main border border-border font-nunito font-bold text-purple-dark disabled:opacity-30 active:opacity-80"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-            )
-          })}
+        <div className="flex flex-col gap-4">
           {products.length === 0 && (
-            <p className="font-nunito text-purple-mid text-sm text-center py-4">
-              Aucun produit actif.
-            </p>
+            <p className="font-nunito text-purple-mid text-sm text-center py-4">Aucun produit actif.</p>
           )}
+          {(() => {
+            // Group by categorie
+            const grouped: { label: string | null; items: typeof products }[] = []
+            const seen = new Set<string | null>()
+            for (const p of products) {
+              if (!seen.has(p.categorie)) {
+                seen.add(p.categorie)
+                grouped.push({ label: p.categorie, items: products.filter((x) => x.categorie === p.categorie) })
+              }
+            }
+            // Sort: named categories first, null last
+            grouped.sort((a, b) => {
+              if (a.label === null) return 1
+              if (b.label === null) return -1
+              return a.label.localeCompare(b.label)
+            })
+            return grouped.map(({ label, items }) => (
+              <div key={label ?? '__sans__'} className="flex flex-col gap-2">
+                {label && (
+                  <h3 className="font-bangers text-purple-dark text-lg tracking-wide px-1">{label}</h3>
+                )}
+                {!label && grouped.some((g) => g.label !== null) && (
+                  <h3 className="font-bangers text-purple-mid text-base tracking-wide px-1">Autres</h3>
+                )}
+                {items.map((product) => {
+                  const item = orderItems.find((i) => i.product.id === product.id)
+                  const qty = item?.qty ?? 0
+                  return (
+                    <div
+                      key={product.id}
+                      className="bg-white rounded-card border border-border p-3 flex items-center gap-3"
+                    >
+                      <span className="text-2xl flex-shrink-0">{product.emoji ?? '📦'}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-nunito font-bold text-purple-dark text-sm truncate">{product.nom}</p>
+                        <p className="font-nunito text-purple-mid text-xs">
+                          {product.prix_blerhams}B · Stock: {product.stock}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleQtyChange(product, -1)}
+                          disabled={qty === 0}
+                          className="w-8 h-8 rounded-btn bg-bg-main border border-border font-nunito font-bold text-purple-dark disabled:opacity-30 active:opacity-80"
+                        >
+                          −
+                        </button>
+                        <span className={`font-bangers text-lg w-6 text-center ${qty > 0 ? 'text-pink-fluo' : 'text-purple-dark'}`}>{qty}</span>
+                        <button
+                          onClick={() => handleQtyChange(product, 1)}
+                          disabled={qty >= product.stock}
+                          className="w-8 h-8 rounded-btn bg-bg-main border border-border font-nunito font-bold text-purple-dark disabled:opacity-30 active:opacity-80"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ))
+          })()}
         </div>
 
         {orderItems.length > 0 && (

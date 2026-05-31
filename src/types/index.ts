@@ -64,6 +64,7 @@ export interface Product {
   prix_blerhams: number
   stock: number
   event_id: string | null
+  categorie: string | null
   actif: boolean
   created_at: string
 }

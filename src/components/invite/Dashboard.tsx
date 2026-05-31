@@ -3,9 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { TransferModal } from './TransferModal'
 import { TransferAnimation } from '../ui/TransferAnimation'
 import { useRealtimeSolde } from '../../hooks/useRealtime'
-import type { Profile } from '../../types'
+import type { Profile, UserRole } from '../../types'
 
-// Mets à jour ces liens quand tu as les URLs définitives
 const SPOTIFY_JAM_URL = 'https://open.spotify.com'
 const POV_URL = 'https://photos.google.com'
 
@@ -22,12 +21,37 @@ interface AccesItem {
   target?: string
 }
 
-const ACCES_UTILES: AccesItem[] = [
-  { label: 'Laurapiades',           emoji: '🏆', action: 'navigate',  target: '/laurapiades' },
+const BASE_ITEMS: AccesItem[] = [
+  { label: 'Laurapiades',              emoji: '🏆', action: 'navigate', target: '/laurapiades' },
   { label: 'Rejoindre la jam Spotify', emoji: '🎵', action: 'external', target: SPOTIFY_JAM_URL },
-  { label: 'Rejoindre le POV',      emoji: '🎬', action: 'external',  target: POV_URL },
-  { label: 'Transférer des Blerhams', emoji: '💸', action: 'transfer' },
+  { label: 'Rejoindre le POV',         emoji: '🎬', action: 'external', target: POV_URL },
+  { label: 'Transférer des Blerhams',  emoji: '💸', action: 'transfer' },
+  { label: 'Mon Profil',               emoji: '👤', action: 'navigate', target: '/profil' },
 ]
+
+const JEUX_ITEMS: AccesItem[] = [
+  { label: 'Épreuves',   emoji: '🎮', action: 'navigate', target: '/admin/epreuves' },
+  { label: 'Classement', emoji: '📊', action: 'navigate', target: '/admin/classement' },
+  { label: 'Équipes',    emoji: '👥', action: 'navigate', target: '/admin/equipes' },
+]
+
+const VENTES_ITEMS: AccesItem[] = [
+  { label: 'Dépense',   emoji: '🛒', action: 'navigate', target: '/admin/depense' },
+  { label: 'Catalogue', emoji: '📦', action: 'navigate', target: '/admin/catalogue' },
+]
+
+const GENERAL_ITEMS: AccesItem[] = [
+  { label: 'Rôles',        emoji: '👑', action: 'navigate', target: '/admin/roles' },
+  { label: 'Événements',   emoji: '🎪', action: 'navigate', target: '/admin/events' },
+  { label: 'Bonus / Malus',emoji: '⚡', action: 'navigate', target: '/admin/bonus' },
+]
+
+function getItems(role: UserRole): AccesItem[] {
+  if (role === 'admin_general') return [...BASE_ITEMS, ...JEUX_ITEMS, ...VENTES_ITEMS, ...GENERAL_ITEMS]
+  if (role === 'admin_jeux')    return [...BASE_ITEMS, ...JEUX_ITEMS]
+  if (role === 'admin_ventes')  return [...BASE_ITEMS, ...VENTES_ITEMS]
+  return BASE_ITEMS
+}
 
 export function Dashboard({ profile, coinPhotoUrl, onProfileUpdate }: DashboardProps) {
   const [showTransfer, setShowTransfer] = useState(false)
@@ -55,8 +79,10 @@ export function Dashboard({ profile, coinPhotoUrl, onProfileUpdate }: DashboardP
     }
   }
 
+  const items = getItems(profile.role)
+
   return (
-    <div className="flex flex-col gap-6 px-4 pt-6 pb-28">
+    <div className="flex flex-col gap-6 px-4 pt-6 pb-10">
       {/* Solde */}
       <div className="bg-white rounded-card-lg border border-border p-6 text-center shadow-sm">
         <p className="font-nunito text-purple-mid text-sm">Solde actuel</p>
@@ -68,7 +94,7 @@ export function Dashboard({ profile, coinPhotoUrl, onProfileUpdate }: DashboardP
       {/* Accès utiles */}
       <div className="flex flex-col gap-3">
         <h2 className="font-bangers text-purple-dark text-xl tracking-wide">Accès utiles</h2>
-        {ACCES_UTILES.map((item) => (
+        {items.map((item) => (
           <button
             key={item.label}
             onClick={() => handleAcces(item)}

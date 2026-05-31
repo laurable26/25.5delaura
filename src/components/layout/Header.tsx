@@ -1,13 +1,26 @@
+import { useNavigate } from 'react-router-dom'
+
 interface HeaderProps {
   title: string
   subtitle?: string
   profilePhotoUrl?: string | null
   profilePrenom?: string
+  showBack?: boolean
 }
 
-export function Header({ title, subtitle, profilePhotoUrl, profilePrenom }: HeaderProps) {
+export function Header({ title, subtitle, profilePhotoUrl, profilePrenom, showBack }: HeaderProps) {
+  const navigate = useNavigate()
   return (
     <header className="sticky top-0 z-30 bg-bg-main border-b border-border px-4 py-3 flex items-center gap-3">
+      {showBack && (
+        <button
+          onClick={() => navigate('/')}
+          className="flex-shrink-0 text-purple-mid font-nunito text-xl leading-none pr-1"
+          aria-label="Retour"
+        >
+          ←
+        </button>
+      )}
       {profilePhotoUrl !== undefined && (
         <div className="flex-shrink-0">
           {profilePhotoUrl ? (

@@ -89,6 +89,31 @@ export function EpreuvesTab() {
     setSubmitting(false)
   }
 
+  async function handleReorder(epreuve: Epreuve, direction: 'up' | 'down') {
+    const eventEpreuves = epreuves
+      .filter((e) => e.event_id === epreuve.event_id)
+      .sort((a, b) => (a.ordre ?? 999) - (b.ordre ?? 999))
+    const idx = eventEpreuves.findIndex((e) => e.id === epreuve.id)
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+    if (swapIdx < 0 || swapIdx >= eventEpreuves.length) return
+
+    const other = eventEpreuves[swapIdx]
+    const newOrdreA = other.ordre ?? swapIdx + 1
+    const newOrdreB = epreuve.ordre ?? idx + 1
+
+    await Promise.all([
+      supabase.from('epreuves').update({ ordre: newOrdreA }).eq('id', epreuve.id),
+      supabase.from('epreuves').update({ ordre: newOrdreB }).eq('id', other.id),
+    ])
+    setEpreuves((prev) =>
+      prev.map((e) => {
+        if (e.id === epreuve.id) return { ...e, ordre: newOrdreA }
+        if (e.id === other.id) return { ...e, ordre: newOrdreB }
+        return e
+      })
+    )
+  }
+
   async function handleStatusChange(epreuve: Epreuve) {
     const next = STATUS_NEXT[epreuve.statut]
     if (!next) return
@@ -202,6 +227,8 @@ export function EpreuvesTab() {
         const eventEpreuves = epreuves.filter((e) => e.event_id === event.id)
         const isFormOpen = showFormForEvent === event.id
 
+        const sortedEpreuves = eventEpreuves.slice().sort((a, b) => (a.ordre ?? 999) - (b.ordre ?? 999))
+
         return (
           <div key={event.id} className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
@@ -285,7 +312,7 @@ export function EpreuvesTab() {
               </div>
             )}
 
-            {eventEpreuves.map((epreuve) => {
+            {sortedEpreuves.map((epreuve, epIdx) => {
               const inputs = resultInputs[epreuve.id] ?? []
               const showResult = epreuve.statut === 'en_cours' || epreuve.statut === 'termine'
 
@@ -297,6 +324,19 @@ export function EpreuvesTab() {
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
+                    {/* Ordre ↑↓ */}
+                    <div className="flex flex-col gap-0.5 flex-shrink-0">
+                      <button
+                        onClick={() => handleReorder(epreuve, 'up')}
+                        disabled={epIdx === 0}
+                        className="w-6 h-6 flex items-center justify-center rounded text-purple-mid bg-bg-main border border-border text-xs disabled:opacity-20 active:opacity-60"
+                      >↑</button>
+                      <button
+                        onClick={() => handleReorder(epreuve, 'down')}
+                        disabled={epIdx === sortedEpreuves.length - 1}
+                        className="w-6 h-6 flex items-center justify-center rounded text-purple-mid bg-bg-main border border-border text-xs disabled:opacity-20 active:opacity-60"
+                      >↓</button>
+                    </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-nunito font-bold text-purple-dark truncate">{epreuve.nom}</p>
                       <p className="font-nunito text-purple-mid text-xs mt-0.5">
@@ -403,7 +443,7 @@ export function EpreuvesTab() {
               )
             })}
 
-            {eventEpreuves.length === 0 && !isFormOpen && (
+            {sortedEpreuves.length === 0 && !isFormOpen && (
               <p className="font-nunito text-purple-mid text-sm text-center py-2">
                 Aucune épreuve.
               </p>

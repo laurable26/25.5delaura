@@ -1,14 +1,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
-import type { Epreuve, Equipe, ResultatEpreuve, Profile } from '../../types'
+import type { Epreuve, Equipe, Profile } from '../../types'
 
-// Mettre l'URL du plan de l'île quand disponible
 const PLAN_ILE_URL = ''
-
-interface ClassementEntry {
-  equipe: Equipe
-  total: number
-}
 
 interface LaurapiadesProps {
   profile: Profile
@@ -17,31 +11,16 @@ interface LaurapiadesProps {
 export function Laurapiades({ profile }: LaurapiadesProps) {
   const [epreuves, setEpreuves] = useState<Epreuve[]>([])
   const [equipes, setEquipes] = useState<Equipe[]>([])
-  const [classement, setClassement] = useState<ClassementEntry[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function load() {
-      const [{ data: ep }, { data: eq }, { data: resultats }] = await Promise.all([
+      const [{ data: ep }, { data: eq }] = await Promise.all([
         supabase.from('epreuves').select('*').order('ordre', { nullsFirst: false }),
         supabase.from('equipes').select('*').order('nom'),
-        supabase.from('resultats_epreuves').select('*'),
       ])
-
       setEpreuves(ep ?? [])
       setEquipes(eq ?? [])
-
-      if (eq && resultats) {
-        const totals = (eq as Equipe[]).map((e) => {
-          const total = (resultats as ResultatEpreuve[])
-            .filter((r) => r.equipe_id === e.id)
-            .reduce((sum, r) => sum + r.blerhams_attribues, 0)
-          return { equipe: e, total }
-        })
-        totals.sort((a, b) => b.total - a.total)
-        setClassement(totals)
-      }
-
       setLoading(false)
     }
     load()
@@ -119,27 +98,6 @@ export function Laurapiades({ profile }: LaurapiadesProps) {
                 ? `Victoire: ${ep.blerhams_victoire}B · Défaite: ${ep.blerhams_defaite}B`
                 : `${ep.blerhams_par_point}B / point`}
             </p>
-          </div>
-        ))}
-      </div>
-
-      {/* Classement */}
-      <div className="flex flex-col gap-3">
-        <h2 className="font-bangers text-purple-dark text-xl tracking-wide">Classement</h2>
-        {classement.map((entry, i) => (
-          <div
-            key={entry.equipe.id}
-            className="bg-white rounded-card border border-border p-3 flex items-center gap-3"
-          >
-            <span className="font-bangers text-2xl text-purple-mid w-8 text-center">
-              {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`}
-            </span>
-            <div
-              className="w-3 h-8 rounded-full flex-shrink-0"
-              style={{ backgroundColor: entry.equipe.couleur ?? '#8B6BAE' }}
-            />
-            <p className="font-nunito font-bold text-purple-dark flex-1">{entry.equipe.nom}</p>
-            <p className="font-bangers text-xl text-purple-dark">{entry.total} B</p>
           </div>
         ))}
       </div>

@@ -1,62 +1,20 @@
 import { useState, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { TransferModal } from './TransferModal'
 import { TransferAnimation } from '../ui/TransferAnimation'
 import { useRealtimeSolde } from '../../hooks/useRealtime'
-import type { Profile, UserRole } from '../../types'
-
-const SPOTIFY_JAM_URL = 'https://open.spotify.com'
-const POV_URL = 'https://photos.google.com'
+import type { Profile } from '../../types'
 
 interface DashboardProps {
   profile: Profile
   coinPhotoUrl?: string | null
   onProfileUpdate: (p: Profile) => void
+  showTransferFromDrawer?: boolean
+  onTransferClose?: () => void
 }
 
-interface AccesItem {
-  label: string
-  emoji: string
-  action: 'navigate' | 'external' | 'transfer'
-  target?: string
-}
-
-const BASE_ITEMS: AccesItem[] = [
-  { label: 'Laurapiades',              emoji: '🏆', action: 'navigate', target: '/laurapiades' },
-  { label: 'Rejoindre la jam Spotify', emoji: '🎵', action: 'external', target: SPOTIFY_JAM_URL },
-  { label: 'Rejoindre le POV',         emoji: '🎬', action: 'external', target: POV_URL },
-  { label: 'Transférer des Blerhams',  emoji: '💸', action: 'transfer' },
-  { label: 'Mon Profil',               emoji: '👤', action: 'navigate', target: '/profil' },
-]
-
-const JEUX_ITEMS: AccesItem[] = [
-  { label: 'Épreuves',   emoji: '🎮', action: 'navigate', target: '/admin/epreuves' },
-  { label: 'Classement', emoji: '📊', action: 'navigate', target: '/admin/classement' },
-  { label: 'Équipes',    emoji: '👥', action: 'navigate', target: '/admin/equipes' },
-]
-
-const VENTES_ITEMS: AccesItem[] = [
-  { label: 'Dépense',   emoji: '🛒', action: 'navigate', target: '/admin/depense' },
-  { label: 'Catalogue', emoji: '📦', action: 'navigate', target: '/admin/catalogue' },
-]
-
-const GENERAL_ITEMS: AccesItem[] = [
-  { label: 'Rôles',        emoji: '👑', action: 'navigate', target: '/admin/roles' },
-  { label: 'Événements',   emoji: '🎪', action: 'navigate', target: '/admin/events' },
-  { label: 'Bonus / Malus',emoji: '⚡', action: 'navigate', target: '/admin/bonus' },
-]
-
-function getItems(role: UserRole): AccesItem[] {
-  if (role === 'admin_general') return [...BASE_ITEMS, ...JEUX_ITEMS, ...VENTES_ITEMS, ...GENERAL_ITEMS]
-  if (role === 'admin_jeux')    return [...BASE_ITEMS, ...JEUX_ITEMS]
-  if (role === 'admin_ventes')  return [...BASE_ITEMS, ...VENTES_ITEMS]
-  return BASE_ITEMS
-}
-
-export function Dashboard({ profile, coinPhotoUrl, onProfileUpdate }: DashboardProps) {
+export function Dashboard({ profile, coinPhotoUrl, onProfileUpdate, showTransferFromDrawer, onTransferClose }: DashboardProps) {
   const [showTransfer, setShowTransfer] = useState(false)
   const [animation, setAnimation] = useState<{ from: number; to: number } | null>(null)
-  const navigate = useNavigate()
 
   const handleUpdate = useCallback((updated: Profile) => {
     onProfileUpdate(updated)
@@ -64,53 +22,37 @@ export function Dashboard({ profile, coinPhotoUrl, onProfileUpdate }: DashboardP
 
   useRealtimeSolde(profile.id, handleUpdate)
 
+  const transferOpen = showTransfer || (showTransferFromDrawer ?? false)
+
   function handleTransferSuccess(newSolde: number) {
     setShowTransfer(false)
+    onTransferClose?.()
     setAnimation({ from: profile.solde, to: newSolde })
   }
 
-  function handleAcces(item: AccesItem) {
-    if (item.action === 'navigate' && item.target) {
-      navigate(item.target)
-    } else if (item.action === 'external' && item.target) {
-      window.open(item.target, '_blank', 'noopener,noreferrer')
-    } else if (item.action === 'transfer') {
-      setShowTransfer(true)
-    }
+  function handleTransferClose() {
+    setShowTransfer(false)
+    onTransferClose?.()
   }
 
-  const items = getItems(profile.role)
-
   return (
-    <div className="flex flex-col gap-6 px-4 pt-6 pb-10">
+    <div className="flex flex-col gap-6 px-4 pt-8 pb-10">
       {/* Solde */}
-      <div className="bg-white rounded-card-lg border border-border p-6 text-center shadow-sm">
+      <div className="bg-white rounded-card-lg border border-border p-8 text-center shadow-sm">
         <p className="font-nunito text-purple-mid text-sm">Solde actuel</p>
-        <p className="font-bangers text-purple-dark text-6xl tracking-wide leading-tight mt-1">
-          {profile.solde} <span className="text-4xl">B</span>
+        <p className="font-bangers text-purple-dark text-7xl tracking-wide leading-tight mt-2">
+          {profile.solde} <span className="text-5xl">B</span>
         </p>
       </div>
 
-      {/* Accès utiles */}
-      <div className="flex flex-col gap-3">
-        <h2 className="font-bangers text-purple-dark text-xl tracking-wide">Accès utiles</h2>
-        {items.map((item) => (
-          <button
-            key={item.label}
-            onClick={() => handleAcces(item)}
-            className="w-full flex items-center gap-4 bg-white rounded-card border border-border px-4 py-4 active:bg-bg-main transition-colors text-left"
-          >
-            <span className="text-2xl">{item.emoji}</span>
-            <span className="font-nunito font-bold text-purple-dark text-base">{item.label}</span>
-            <span className="ml-auto text-purple-mid text-lg">›</span>
-          </button>
-        ))}
-      </div>
+      <p className="font-nunito text-purple-mid text-sm text-center">
+        Appuie sur ta photo pour accéder au menu
+      </p>
 
-      {showTransfer && (
+      {transferOpen && (
         <TransferModal
           profile={profile}
-          onClose={() => setShowTransfer(false)}
+          onClose={handleTransferClose}
           onSuccess={handleTransferSuccess}
         />
       )}

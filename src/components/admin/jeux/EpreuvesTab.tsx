@@ -43,6 +43,19 @@ export function EpreuvesTab() {
   const [validatingResult, setValidatingResult] = useState<string | null>(null)
   const [winnerEquipeId, setWinnerEquipeId] = useState<Record<string, string>>({})
 
+  // Edit state
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editNom, setEditNom] = useState('')
+  const [editMode, setEditMode] = useState<EpreuveMode>('gagnant_perdant')
+  const [editVictoire, setEditVictoire] = useState('100')
+  const [editDefaite, setEditDefaite] = useState('0')
+  const [editParPoint, setEditParPoint] = useState('10')
+  const [saving, setSaving] = useState(false)
+
+  // Delete state
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
+
   useEffect(() => {
     load()
   }, [])
@@ -112,6 +125,55 @@ export function EpreuvesTab() {
         return e
       })
     )
+  }
+
+  function startEdit(epreuve: Epreuve) {
+    setEditingId(epreuve.id)
+    setEditNom(epreuve.nom)
+    setEditMode(epreuve.mode)
+    setEditVictoire(String(epreuve.blerhams_victoire))
+    setEditDefaite(String(epreuve.blerhams_defaite))
+    setEditParPoint(String(epreuve.blerhams_par_point ?? 10))
+  }
+
+  async function handleSaveEdit(epreuveId: string) {
+    if (!editNom.trim()) return
+    setSaving(true)
+    setError(null)
+    const { error: err } = await supabase.from('epreuves').update({
+      nom: editNom.trim(),
+      mode: editMode,
+      blerhams_victoire: editMode === 'gagnant_perdant' ? parseInt(editVictoire) : 0,
+      blerhams_defaite:  editMode === 'gagnant_perdant' ? parseInt(editDefaite) : 0,
+      blerhams_par_point: editMode === 'par_points' ? parseInt(editParPoint) : null,
+    }).eq('id', epreuveId)
+    if (err) {
+      setError(err.message)
+    } else {
+      setEpreuves((prev) => prev.map((e) => e.id === epreuveId ? {
+        ...e,
+        nom: editNom.trim(),
+        mode: editMode,
+        blerhams_victoire: editMode === 'gagnant_perdant' ? parseInt(editVictoire) : 0,
+        blerhams_defaite:  editMode === 'gagnant_perdant' ? parseInt(editDefaite) : 0,
+        blerhams_par_point: editMode === 'par_points' ? parseInt(editParPoint) : null,
+      } : e))
+      setEditingId(null)
+    }
+    setSaving(false)
+  }
+
+  async function handleDelete(epreuveId: string) {
+    setDeleting(true)
+    setError(null)
+    const { error: err } = await supabase.from('epreuves').delete().eq('id', epreuveId)
+    if (err) {
+      setError(err.message)
+    } else {
+      setEpreuves((prev) => prev.filter((e) => e.id !== epreuveId))
+      setConfirmDeleteId(null)
+    }
+    setDeleting(false)
   }
 
   async function handleStatusChange(epreuve: Epreuve) {
@@ -315,6 +377,8 @@ export function EpreuvesTab() {
             {sortedEpreuves.map((epreuve, epIdx) => {
               const inputs = resultInputs[epreuve.id] ?? []
               const showResult = epreuve.statut === 'en_cours' || epreuve.statut === 'termine'
+              const isEditing = editingId === epreuve.id
+              const isConfirmDelete = confirmDeleteId === epreuve.id
 
               return (
                 <div
@@ -354,7 +418,88 @@ export function EpreuvesTab() {
                     }`}>
                       {STATUS_LABELS[epreuve.statut]}
                     </span>
+                    {/* Edit / Delete buttons */}
+                    <div className="flex gap-1 flex-shrink-0">
+                      <button
+                        onClick={() => isEditing ? setEditingId(null) : startEdit(epreuve)}
+                        className="w-7 h-7 flex items-center justify-center rounded bg-bg-main border border-border text-purple-mid text-sm active:opacity-60"
+                      >✏️</button>
+                      <button
+                        onClick={() => setConfirmDeleteId(isConfirmDelete ? null : epreuve.id)}
+                        className="w-7 h-7 flex items-center justify-center rounded bg-bg-main border border-border text-purple-mid text-sm active:opacity-60"
+                      >🗑️</button>
+                    </div>
                   </div>
+
+                  {/* Inline edit form */}
+                  {isEditing && (
+                    <div className="border-t border-border pt-3 flex flex-col gap-2">
+                      <input
+                        autoFocus
+                        type="text"
+                        value={editNom}
+                        onChange={(e) => setEditNom(e.target.value)}
+                        className="border border-border rounded-btn px-3 py-2 font-nunito text-purple-dark text-sm bg-bg-main w-full"
+                      />
+                      <select
+                        value={editMode}
+                        onChange={(e) => setEditMode(e.target.value as EpreuveMode)}
+                        className="border border-border rounded-btn px-3 py-2 font-nunito text-purple-dark text-sm bg-bg-main"
+                      >
+                        <option value="gagnant_perdant">🏆 Gagnant/Perdant</option>
+                        <option value="par_points">📊 Par points</option>
+                      </select>
+                      {editMode === 'gagnant_perdant' ? (
+                        <div className="flex gap-2">
+                          <div className="flex-1">
+                            <label className="font-nunito text-xs text-purple-mid block mb-1">Victoire (B)</label>
+                            <input type="number" value={editVictoire} onChange={(e) => setEditVictoire(e.target.value)}
+                              className="w-full border border-border rounded-btn px-3 py-2 font-nunito text-purple-dark text-sm bg-bg-main" />
+                          </div>
+                          <div className="flex-1">
+                            <label className="font-nunito text-xs text-purple-mid block mb-1">Défaite (B)</label>
+                            <input type="number" value={editDefaite} onChange={(e) => setEditDefaite(e.target.value)}
+                              className="w-full border border-border rounded-btn px-3 py-2 font-nunito text-purple-dark text-sm bg-bg-main" />
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <label className="font-nunito text-xs text-purple-mid block mb-1">Blerhams par point</label>
+                          <input type="number" value={editParPoint} onChange={(e) => setEditParPoint(e.target.value)}
+                            className="w-full border border-border rounded-btn px-3 py-2 font-nunito text-purple-dark text-sm bg-bg-main" />
+                        </div>
+                      )}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleSaveEdit(epreuve.id)}
+                          disabled={saving || !editNom.trim()}
+                          className="flex-1 py-2 rounded-btn bg-yellow-fest text-purple-dark font-nunito font-bold text-sm disabled:opacity-50"
+                        >
+                          {saving ? '...' : '✓ Sauvegarder'}
+                        </button>
+                        <button
+                          onClick={() => setEditingId(null)}
+                          className="px-4 py-2 rounded-btn bg-bg-main border border-border font-nunito text-purple-mid text-sm"
+                        >Annuler</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Delete confirm */}
+                  {isConfirmDelete && (
+                    <div className="border-t border-red-200 pt-3 flex items-center gap-3 bg-red-50 -mx-4 -mb-4 px-4 pb-4 rounded-b-card">
+                      <p className="font-nunito text-red-600 text-sm flex-1">Supprimer cette épreuve ?</p>
+                      <button
+                        onClick={() => handleDelete(epreuve.id)}
+                        disabled={deleting}
+                        className="px-3 py-1.5 rounded-btn bg-red-500 text-white font-nunito font-bold text-xs disabled:opacity-50"
+                      >{deleting ? '...' : 'Supprimer'}</button>
+                      <button
+                        onClick={() => setConfirmDeleteId(null)}
+                        className="px-3 py-1.5 rounded-btn bg-white border border-border font-nunito text-purple-mid text-xs"
+                      >Non</button>
+                    </div>
+                  )}
 
                   {STATUS_NEXT[epreuve.statut] && (
                     <button

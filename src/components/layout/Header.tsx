@@ -6,9 +6,10 @@ interface HeaderProps {
   profilePhotoUrl?: string | null
   profilePrenom?: string
   showBack?: boolean
+  onProfileClick?: () => void
 }
 
-export function Header({ title, subtitle, profilePhotoUrl, profilePrenom, showBack }: HeaderProps) {
+export function Header({ title, subtitle, profilePhotoUrl, profilePrenom, showBack, onProfileClick }: HeaderProps) {
   const navigate = useNavigate()
   return (
     <header className="sticky top-0 z-30 bg-bg-main border-b border-border px-4 py-3 flex items-center gap-3">
@@ -22,7 +23,11 @@ export function Header({ title, subtitle, profilePhotoUrl, profilePrenom, showBa
         </button>
       )}
       {profilePhotoUrl !== undefined && (
-        <div className="flex-shrink-0">
+        <button
+          onClick={onProfileClick}
+          className="flex-shrink-0 active:opacity-70 transition-opacity"
+          aria-label="Menu"
+        >
           {profilePhotoUrl ? (
             <img
               src={profilePhotoUrl}
@@ -34,7 +39,7 @@ export function Header({ title, subtitle, profilePhotoUrl, profilePrenom, showBa
               {profilePrenom?.[0] ?? '?'}
             </div>
           )}
-        </div>
+        </button>
       )}
       <div className="flex-1 min-w-0">
         <h1 className="font-bangers text-purple-dark text-2xl tracking-wide leading-none truncate">

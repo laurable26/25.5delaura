@@ -11,6 +11,7 @@ interface Matchup {
 interface TourEntry {
   tourNum: number
   matchups: Matchup[]
+  enPause: Equipe[]
 }
 
 function computeSchedule(equipes: Equipe[], epreuves: Epreuve[]): TourEntry[] {
@@ -39,7 +40,9 @@ function computeSchedule(equipes: Equipe[], epreuves: Epreuve[]): TourEntry[] {
           epreuve: batchEp[s],
         })
       }
-      schedule.push({ tourNum: globalTour++, matchups })
+      const activeIds = new Set(matchups.flatMap((m) => [m.odd.id, m.even.id]))
+      const enPause = sorted.filter((e) => !activeIds.has(e.id))
+      schedule.push({ tourNum: globalTour++, matchups, enPause })
     }
   }
 
@@ -82,8 +85,13 @@ export function RotationsTab() {
     warnings.push(`${equipesWithoutNum.length} équipe(s) sans numéro : ${equipesWithoutNum.map((e) => e.nom).join(', ')}`)
   if (N > 0 && N % 2 !== 0)
     warnings.push('Le nombre d\'équipes numérotées doit être pair.')
-  if (epreuves.length > 0 && N >= 2 && epreuves.length % half !== 0)
-    warnings.push(`${epreuves.length} épreuves pour ${N} équipes (${half} stations) : le dernier groupe aura des tours inégaux.`)
+  if (epreuves.length > 0 && N >= 2 && epreuves.length % half !== 0) {
+    const lastBatchSize = epreuves.length % half
+    const teamsIdle = N - lastBatchSize * 2
+    warnings.push(
+      `${epreuves.length} épreuves pour ${N} équipes (${half} stations) : le dernier groupe n'a que ${lastBatchSize} épreuve${lastBatchSize > 1 ? 's' : ''} — ${teamsIdle} équipe${teamsIdle > 1 ? 's' : ''} seront en pause à tour de rôle. Chaque équipe joue quand même les ${epreuves.length} épreuves.`
+    )
+  }
 
   const schedule = computeSchedule(equipesWithNum, epreuves)
   const totalTours = schedule.length
@@ -112,7 +120,7 @@ export function RotationsTab() {
         </p>
       )}
 
-      {schedule.map(({ tourNum, matchups }) => {
+      {schedule.map(({ tourNum, matchups, enPause }) => {
         const batchIndex = Math.floor((tourNum - 1) / half)
         const isFirstOfBatch = (tourNum - 1) % half === 0
         return (
@@ -146,6 +154,13 @@ export function RotationsTab() {
                     </div>
                   </div>
                 ))}
+                {enPause.length > 0 && (
+                  <div className="px-4 py-2 bg-gray-50">
+                    <p className="font-nunito text-xs text-purple-mid">
+                      ⏸ En pause : {enPause.map((e) => `#${e.numero} ${e.nom}`).join(', ')}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

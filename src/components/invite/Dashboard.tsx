@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { TransferModal } from './TransferModal'
-import { TransferAnimation } from '../ui/TransferAnimation'
 import { useRealtimeSolde } from '../../hooks/useRealtime'
 import type { Profile, UserRole } from '../../types'
 
@@ -52,9 +51,8 @@ function getItems(role: UserRole): AccesItem[] {
   return BASE_ITEMS
 }
 
-export function Dashboard({ profile, coinPhotoUrl, onProfileUpdate }: DashboardProps) {
+export function Dashboard({ profile, onProfileUpdate }: DashboardProps) {
   const [showTransfer, setShowTransfer] = useState(false)
-  const [animation, setAnimation] = useState<{ from: number; to: number } | null>(null)
   const navigate = useNavigate()
 
   const handleUpdate = useCallback((updated: Profile) => {
@@ -65,7 +63,7 @@ export function Dashboard({ profile, coinPhotoUrl, onProfileUpdate }: DashboardP
 
   function handleTransferSuccess(newSolde: number) {
     setShowTransfer(false)
-    setAnimation({ from: profile.solde, to: newSolde })
+    onProfileUpdate({ ...profile, solde: newSolde })
   }
 
   function handleAcces(item: AccesItem) {
@@ -111,15 +109,6 @@ export function Dashboard({ profile, coinPhotoUrl, onProfileUpdate }: DashboardP
           profile={profile}
           onClose={() => setShowTransfer(false)}
           onSuccess={handleTransferSuccess}
-        />
-      )}
-
-      {animation && (
-        <TransferAnimation
-          fromSolde={animation.from}
-          toSolde={animation.to}
-          coinPhotoUrl={coinPhotoUrl}
-          onClose={() => setAnimation(null)}
         />
       )}
     </div>

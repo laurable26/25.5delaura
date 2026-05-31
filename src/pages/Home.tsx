@@ -37,7 +37,7 @@ function GuardedRoute({ profile, requiredRoles, element }: GuardedRouteProps) {
   return element
 }
 
-export function Home({ profile, coinPhotoUrl, onProfileUpdate, onLogout }: HomeProps) {
+export function Home({ profile, onProfileUpdate, onLogout }: HomeProps) {
   const navigate = useNavigate()
 
   return (
@@ -57,7 +57,6 @@ export function Home({ profile, coinPhotoUrl, onProfileUpdate, onLogout }: HomeP
                 />
                 <Dashboard
                   profile={profile}
-                  coinPhotoUrl={coinPhotoUrl}
                   onProfileUpdate={onProfileUpdate}
                 />
               </>

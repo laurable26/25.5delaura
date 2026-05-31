@@ -25,6 +25,9 @@ export default {
         'card-lg': '20px',
         btn: '14px',
       },
+      zIndex: {
+        60: '60',
+      },
     },
   },
   plugins: [],

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from './lib/supabase'
 import { useProfile } from './hooks/useProfile'
 import { useRealtimePendingTransaction } from './hooks/useRealtime'
@@ -6,6 +6,7 @@ import { Home } from './pages/Home'
 import { PhotoStep } from './pages/Onboarding/PhotoStep'
 import { PinStep } from './pages/Onboarding/PinStep'
 import { DepenseConfirmModal } from './components/invite/DepenseConfirmModal'
+import { TransferAnimation } from './components/ui/TransferAnimation'
 import { LoginScreen } from './components/invite/LoginScreen'
 import type { Session } from '@supabase/supabase-js'
 import type { Profile } from './types'
@@ -26,6 +27,8 @@ export default function App() {
 
   const { profile, loading: profileLoading, setProfile, refetch } = useProfile(session?.user?.id)
   const [pendingTxId, setPendingTxId] = useState<string | null>(null)
+  const [soldeAnimation, setSoldeAnimation] = useState<{ from: number; to: number } | null>(null)
+  const prevSoldeRef = useRef<number | null>(null)
 
   const handlePendingTx = useCallback((txId: string) => {
     setPendingTxId((prev) => prev ?? txId)
@@ -76,7 +79,19 @@ export default function App() {
     loadCoinPhoto()
   }, [session])
 
+  // Initialise the ref once the profile loads
+  useEffect(() => {
+    if (profile && prevSoldeRef.current === null) {
+      prevSoldeRef.current = profile.solde
+    }
+  }, [profile])
+
   const handleProfileUpdate = useCallback((p: Profile) => {
+    const prev = prevSoldeRef.current
+    if (prev !== null && prev !== p.solde) {
+      setSoldeAnimation({ from: prev, to: p.solde })
+    }
+    prevSoldeRef.current = p.solde
     setProfile(p)
   }, [setProfile])
 
@@ -125,6 +140,14 @@ export default function App() {
           transactionId={pendingTxId}
           pinHash={profile.pin_hash}
           onDone={() => { setPendingTxId(null); refetch() }}
+        />
+      )}
+      {soldeAnimation && (
+        <TransferAnimation
+          fromSolde={soldeAnimation.from}
+          toSolde={soldeAnimation.to}
+          coinPhotoUrl={coinPhotoUrl}
+          onClose={() => setSoldeAnimation(null)}
         />
       )}
     </>

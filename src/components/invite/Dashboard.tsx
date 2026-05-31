@@ -29,6 +29,7 @@ const BASE_ITEMS: AccesItem[] = [
 
 const JEUX_ITEMS: AccesItem[] = [
   { label: 'Admin : Épreuves',   emoji: '🎮', action: 'navigate', target: '/admin/epreuves' },
+  { label: 'Admin : Rotations',  emoji: '🔄', action: 'navigate', target: '/admin/rotations' },
   { label: 'Admin : Classement', emoji: '📊', action: 'navigate', target: '/admin/classement' },
   { label: 'Admin : Équipes',    emoji: '👥', action: 'navigate', target: '/admin/equipes' },
 ]

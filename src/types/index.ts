@@ -15,6 +15,7 @@ export interface Equipe {
   id: string
   nom: string
   couleur: string | null
+  numero: number | null
   created_at: string
 }
 

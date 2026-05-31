@@ -11,6 +11,7 @@ export function EquipesTab() {
   // Rename state
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
+  const [renameNumero, setRenameNumero] = useState('')
   const [renaming, setRenaming] = useState(false)
 
   // Assign state
@@ -39,14 +40,15 @@ export function EquipesTab() {
     if (!renameValue.trim()) return
     setRenaming(true)
     setError(null)
+    const numero = renameNumero ? parseInt(renameNumero) : null
     const { error: err } = await supabase
       .from('equipes')
-      .update({ nom: renameValue.trim() })
+      .update({ nom: renameValue.trim(), numero })
       .eq('id', equipeId)
     if (err) {
       setError(err.message)
     } else {
-      setEquipes((prev) => prev.map((e) => e.id === equipeId ? { ...e, nom: renameValue.trim() } : e))
+      setEquipes((prev) => prev.map((e) => e.id === equipeId ? { ...e, nom: renameValue.trim(), numero } : e))
       setRenamingId(null)
     }
     setRenaming(false)
@@ -141,15 +143,29 @@ export function EquipesTab() {
             {/* Header équipe */}
             <div className="flex items-center gap-3">
               {isRenaming ? (
-                <input
-                  autoFocus
-                  value={renameValue}
-                  onChange={(e) => setRenameValue(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleRename(equipe.id); if (e.key === 'Escape') setRenamingId(null) }}
-                  className="flex-1 border border-border rounded-btn px-3 py-1.5 font-nunito text-purple-dark text-sm bg-bg-main"
-                />
+                <div className="flex gap-2 flex-1">
+                  <input
+                    type="number"
+                    placeholder="#"
+                    value={renameNumero}
+                    onChange={(e) => setRenameNumero(e.target.value)}
+                    className="w-14 border border-border rounded-btn px-2 py-1.5 font-nunito text-purple-dark text-sm bg-bg-main text-center"
+                  />
+                  <input
+                    autoFocus
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleRename(equipe.id); if (e.key === 'Escape') setRenamingId(null) }}
+                    className="flex-1 border border-border rounded-btn px-3 py-1.5 font-nunito text-purple-dark text-sm bg-bg-main"
+                  />
+                </div>
               ) : (
-                <p className="font-bangers text-purple-dark text-lg tracking-wide flex-1">{equipe.nom}</p>
+                <div className="flex items-center gap-2 flex-1">
+                  {equipe.numero !== null && (
+                    <span className="font-bangers text-purple-mid text-base">#{equipe.numero}</span>
+                  )}
+                  <p className="font-bangers text-purple-dark text-lg tracking-wide">{equipe.nom}</p>
+                </div>
               )}
 
               {isRenaming ? (
@@ -171,7 +187,7 @@ export function EquipesTab() {
               ) : (
                 <div className="flex gap-2 flex-shrink-0">
                   <button
-                    onClick={() => { setRenamingId(equipe.id); setRenameValue(equipe.nom) }}
+                    onClick={() => { setRenamingId(equipe.id); setRenameValue(equipe.nom); setRenameNumero(equipe.numero !== null ? String(equipe.numero) : '') }}
                     className="px-3 py-1 rounded-btn bg-bg-main border border-border font-nunito text-purple-mid text-xs active:opacity-70"
                   >
                     ✏️

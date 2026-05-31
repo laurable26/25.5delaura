@@ -130,6 +130,46 @@ function MapViewer({ onClose }: { onClose: () => void }) {
   )
 }
 
+function computeTeamSchedule(
+  monEquipe: Equipe,
+  equipes: Equipe[],
+  epreuves: Epreuve[],
+): Array<{ tour: number; epreuve: Epreuve; adversaire: Equipe }> {
+  const sorted = [...equipes]
+    .filter((e) => e.numero !== null)
+    .sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
+  const N = sorted.length
+  if (N < 2 || N % 2 !== 0 || monEquipe.numero === null) return []
+  const half = N / 2
+  const stations = [...epreuves]
+    .sort((a, b) => (a.ordre ?? 999) - (b.ordre ?? 999))
+    .slice(0, half)
+  if (stations.length < half) return []
+
+  const isOdd = monEquipe.numero % 2 !== 0
+  const teamGroupIdx = isOdd
+    ? Math.floor((monEquipe.numero - 1) / 2)
+    : Math.floor(monEquipe.numero / 2) - 1
+
+  const result = []
+  for (let r = 0; r < half; r++) {
+    let stationIdx: number
+    if (isOdd) {
+      stationIdx = ((teamGroupIdx - r) % half + half) % half
+    } else {
+      stationIdx = (teamGroupIdx + r) % half
+    }
+    const epreuve = stations[stationIdx]
+
+    const oddIdx = (stationIdx + r) % half
+    const evenIdx = ((stationIdx - r) % half + half) % half
+    const adversaire = isOdd ? sorted[2 * evenIdx + 1] : sorted[2 * oddIdx]
+
+    result.push({ tour: r + 1, epreuve, adversaire })
+  }
+  return result
+}
+
 export function Laurapiades({ profile }: LaurapiadesProps) {
   const [epreuves, setEpreuves] = useState<Epreuve[]>([])
   const [equipes, setEquipes] = useState<Equipe[]>([])
@@ -140,7 +180,7 @@ export function Laurapiades({ profile }: LaurapiadesProps) {
     async function load() {
       const [{ data: ep }, { data: eq }] = await Promise.all([
         supabase.from('epreuves').select('*').order('ordre', { nullsFirst: false }),
-        supabase.from('equipes').select('*').order('nom'),
+        supabase.from('equipes').select('*').order('numero', { nullsFirst: false }),
       ])
       setEpreuves(ep ?? [])
       setEquipes(eq ?? [])
@@ -160,6 +200,7 @@ export function Laurapiades({ profile }: LaurapiadesProps) {
   }
 
   const monEquipe = equipes.find((e) => e.id === profile.equipe_id) ?? null
+  const teamSchedule = monEquipe ? computeTeamSchedule(monEquipe, equipes, epreuves) : []
 
   return (
     <>
@@ -171,7 +212,12 @@ export function Laurapiades({ profile }: LaurapiadesProps) {
           {monEquipe ? (
             <div>
               <p className="font-nunito text-purple-mid text-xs">Mon équipe</p>
-              <p className="font-bangers text-purple-dark text-2xl tracking-wide leading-tight">{monEquipe.nom}</p>
+              <div className="flex items-center gap-2">
+                {monEquipe.numero !== null && (
+                  <span className="font-bangers text-purple-mid text-xl">#{monEquipe.numero}</span>
+                )}
+                <p className="font-bangers text-purple-dark text-2xl tracking-wide leading-tight">{monEquipe.nom}</p>
+              </div>
             </div>
           ) : (
             <p className="font-nunito text-purple-mid text-sm">Tu n'es pas encore dans une équipe.</p>
@@ -188,9 +234,35 @@ export function Laurapiades({ profile }: LaurapiadesProps) {
           <span className="ml-auto text-purple-mid text-lg">›</span>
         </button>
 
+        {/* Mon programme (si rotation configurée) */}
+        {teamSchedule.length > 0 && (
+          <div className="flex flex-col gap-3">
+            <h2 className="font-bangers text-purple-dark text-xl tracking-wide">Mon programme</h2>
+            {teamSchedule.map(({ tour, epreuve, adversaire }) => (
+              <div
+                key={tour}
+                className={`bg-white rounded-card border p-4 flex flex-col gap-1 ${epreuve.statut === 'en_cours' ? 'border-pink-fluo shadow-md' : 'border-border'}`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-bangers text-purple-mid text-base">Tour {tour}</span>
+                  <span className={`text-xs font-nunito px-2 py-0.5 rounded-full ${epreuve.statut === 'en_cours' ? 'bg-pink-fluo text-white' : 'bg-bg-main text-purple-mid'}`}>
+                    {statusLabel[epreuve.statut]}
+                  </span>
+                </div>
+                <p className="font-nunito font-bold text-purple-dark">{epreuve.nom}</p>
+                <p className="font-nunito text-purple-mid text-sm">
+                  vs <span className="font-bold text-purple-dark">
+                    {adversaire.numero !== null ? `#${adversaire.numero} ` : ''}{adversaire.nom}
+                  </span>
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Épreuves */}
         <div className="flex flex-col gap-3">
-          <h2 className="font-bangers text-purple-dark text-xl tracking-wide">Ordre des épreuves</h2>
+          <h2 className="font-bangers text-purple-dark text-xl tracking-wide">Toutes les épreuves</h2>
           {epreuves.length === 0 && (
             <p className="font-nunito text-purple-mid text-sm">Aucune épreuve pour l'instant.</p>
           )}

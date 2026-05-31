@@ -7,6 +7,7 @@ import { RolesTab } from '../components/admin/general/RolesTab'
 import { EventsTab } from '../components/admin/general/EventsTab'
 import { BonusTab } from '../components/admin/general/BonusTab'
 import { EpreuvesTab } from '../components/admin/jeux/EpreuvesTab'
+import { RotationsTab } from '../components/admin/jeux/RotationsTab'
 import { ClassementTab } from '../components/admin/jeux/ClassementTab'
 import { EquipesTab } from '../components/admin/jeux/EquipesTab'
 import { CatalogueTab } from '../components/admin/ventes/CatalogueTab'
@@ -139,6 +140,21 @@ export function Home({ profile, onProfileUpdate, onLogout }: HomeProps) {
                   <>
                     <Header title="🎮 Épreuves" showBack />
                     <EpreuvesTab />
+                  </>
+                }
+              />
+            }
+          />
+          <Route
+            path="/admin/rotations"
+            element={
+              <GuardedRoute
+                profile={profile}
+                requiredRoles={['admin_jeux', 'admin_general']}
+                element={
+                  <>
+                    <Header title="🔄 Rotations" showBack />
+                    <RotationsTab />
                   </>
                 }
               />

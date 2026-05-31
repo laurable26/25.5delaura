@@ -13,8 +13,6 @@ interface TourEntry {
   matchups: Matchup[]
 }
 
-// Circle-method 1-factorization of K_N (N even)
-// Returns N-1 perfect matchings, each covering all N teams
 function computeRoundRobinRounds(N: number): [number, number][][] {
   const rounds: [number, number][][] = []
   const rotate = Array.from({ length: N - 1 }, (_, i) => i)
@@ -50,10 +48,13 @@ function computeSchedule(equipes: Equipe[], epreuves: Epreuve[]): TourEntry[] {
   }))
 }
 
+type View = 'general' | 'epreuve' | 'equipe'
+
 export function RotationsTab() {
   const [equipes, setEquipes] = useState<Equipe[]>([])
   const [epreuves, setEpreuves] = useState<Epreuve[]>([])
   const [loading, setLoading] = useState(true)
+  const [view, setView] = useState<View>('general')
 
   useEffect(() => {
     async function load() {
@@ -88,6 +89,13 @@ export function RotationsTab() {
     warnings.push("Le nombre d'équipes numérotées doit être pair.")
 
   const schedule = computeSchedule(equipesWithNum, epreuves)
+  const sorted = [...equipesWithNum].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
+
+  const VIEWS: { key: View; label: string }[] = [
+    { key: 'general', label: 'Général' },
+    { key: 'epreuve', label: 'Par épreuve' },
+    { key: 'equipe', label: 'Par équipe' },
+  ]
 
   return (
     <div className="flex flex-col gap-4 px-4 pt-6 pb-28">
@@ -99,6 +107,25 @@ export function RotationsTab() {
           </p>
         )}
       </div>
+
+      {/* Vue switcher */}
+      {schedule.length > 0 && (
+        <div className="flex gap-2">
+          {VIEWS.map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setView(key)}
+              className={`flex-1 py-2 rounded-btn font-nunito font-bold text-sm transition-colors ${
+                view === key
+                  ? 'bg-purple-dark text-white'
+                  : 'bg-white border border-border text-purple-dark active:bg-bg-main'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {warnings.map((w) => (
         <div key={w} className="bg-yellow-50 border border-yellow-200 rounded-card p-3">
@@ -112,7 +139,8 @@ export function RotationsTab() {
         </p>
       )}
 
-      {schedule.map(({ tourNum, epreuve, matchups }) => (
+      {/* VUE GÉNÉRALE — tour par tour */}
+      {view === 'general' && schedule.map(({ tourNum, epreuve, matchups }) => (
         <div key={tourNum} className="bg-white rounded-card border border-border overflow-hidden">
           <div className="px-4 py-2 bg-purple-dark">
             <div className="flex items-baseline justify-between gap-2">
@@ -140,6 +168,67 @@ export function RotationsTab() {
           </div>
         </div>
       ))}
+
+      {/* VUE PAR ÉPREUVE */}
+      {view === 'epreuve' && schedule.map(({ tourNum, epreuve, matchups }) => (
+        <div key={tourNum} className="bg-white rounded-card border border-border overflow-hidden">
+          <div className="px-4 py-2 bg-yellow-fest">
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="font-bangers text-purple-dark text-lg tracking-wide truncate">{epreuve.nom}</p>
+              <p className="font-nunito text-purple-dark text-xs opacity-60 flex-shrink-0">Tour {tourNum}</p>
+            </div>
+          </div>
+          <div className="divide-y divide-border">
+            {matchups.map((m, s) => (
+              <div key={s} className="px-4 py-3 flex items-center gap-3">
+                <div className="w-5 h-5 rounded-full bg-yellow-fest bg-opacity-60 flex items-center justify-center flex-shrink-0">
+                  <span className="font-bangers text-purple-dark text-xs">{s + 1}</span>
+                </div>
+                <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                  <span className="font-nunito font-bold text-purple-dark text-sm">
+                    #{m.teamA.numero} {m.teamA.nom}
+                  </span>
+                  <span className="font-bangers text-pink-fluo text-sm">vs</span>
+                  <span className="font-nunito font-bold text-purple-dark text-sm">
+                    #{m.teamB.numero} {m.teamB.nom}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      {/* VUE PAR ÉQUIPE */}
+      {view === 'equipe' && sorted.map((equipe) => {
+        const teamSchedule = schedule.map(({ tourNum, epreuve, matchups }) => {
+          const match = matchups.find((m) => m.teamA.id === equipe.id || m.teamB.id === equipe.id)!
+          const adversaire = match.teamA.id === equipe.id ? match.teamB : match.teamA
+          return { tourNum, epreuve, adversaire }
+        })
+        return (
+          <div key={equipe.id} className="bg-white rounded-card border border-border overflow-hidden">
+            <div className="px-4 py-2 bg-pink-fluo">
+              <p className="font-bangers text-white text-lg tracking-wide">
+                #{equipe.numero} {equipe.nom}
+              </p>
+            </div>
+            <div className="divide-y divide-border">
+              {teamSchedule.map(({ tourNum, epreuve, adversaire }) => (
+                <div key={tourNum} className="px-4 py-3 flex items-center gap-3">
+                  <span className="font-bangers text-purple-mid text-base w-16 flex-shrink-0">Tour {tourNum}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-nunito text-xs text-purple-mid truncate">{epreuve.nom}</p>
+                    <p className="font-nunito font-bold text-purple-dark text-sm">
+                      vs #{adversaire.numero} {adversaire.nom}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }

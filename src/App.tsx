@@ -78,8 +78,8 @@ export default function App() {
     return (
       <div className="min-h-screen bg-bg-main flex flex-col items-center justify-center px-6">
         <div className="text-center mb-10">
-          <h1 className="font-bangers text-purple-dark text-5xl tracking-widest">BLERHAM</h1>
-          <p className="font-nunito text-purple-mid mt-2">25.5 de Laura — 06.06.2026</p>
+          <h1 className="font-bangers text-purple-dark text-5xl tracking-widest">25.5 de Laura</h1>
+          <p className="font-nunito text-purple-mid mt-2">06.06.2026 🎪</p>
         </div>
         <div className="w-full max-w-xs bg-white rounded-card-lg border border-border p-6 text-center">
           <p className="font-nunito text-purple-dark font-bold">Connecte-toi avec le lien magique envoyé par Laura ✨</p>

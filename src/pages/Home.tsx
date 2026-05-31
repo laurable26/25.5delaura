@@ -77,7 +77,7 @@ export function Home({ profile, coinPhotoUrl, onProfileUpdate, onLogout }: HomeP
             element={
               <>
                 <Header title="Mon Profil" showBack />
-                <ProfilTab profile={profile} onLogout={onLogout} />
+                <ProfilTab profile={profile} onLogout={onLogout} onProfileUpdate={onProfileUpdate} />
               </>
             }
           />

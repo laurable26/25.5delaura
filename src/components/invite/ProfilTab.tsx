@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { verifyPin, hashPin } from '../../lib/bcrypt'
 import { PinInput } from '../ui/PinInput'
@@ -9,13 +9,17 @@ type Step = 'idle' | 'old_pin' | 'new_pin' | 'confirm_pin' | 'success'
 interface ProfilTabProps {
   profile: Profile
   onLogout: () => void
+  onProfileUpdate?: (p: Profile) => void
 }
 
-export function ProfilTab({ profile, onLogout }: ProfilTabProps) {
+export function ProfilTab({ profile, onLogout, onProfileUpdate }: ProfilTabProps) {
   const [step, setStep] = useState<Step>('idle')
   const [newPin, setNewPin] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [photoError, setPhotoError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   async function handleOldPin(pin: string) {
     const ok = await verifyPin(pin, profile.pin_hash)
@@ -53,6 +57,45 @@ export function ProfilTab({ profile, onLogout }: ProfilTabProps) {
     } else {
       setStep('success')
     }
+  }
+
+  async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    setPhotoError(null)
+
+    const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg'
+    const path = `${profile.id}.${ext}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(path, file, { upsert: true, contentType: file.type })
+
+    if (uploadError) {
+      setPhotoError(uploadError.message)
+      setUploading(false)
+      return
+    }
+
+    const { data: urlData } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(path)
+
+    const photoUrl = `${urlData.publicUrl}?t=${Date.now()}`
+
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ photo_url: photoUrl })
+      .eq('id', profile.id)
+
+    if (updateError) {
+      setPhotoError(updateError.message)
+    } else {
+      onProfileUpdate?.({ ...profile, photo_url: photoUrl })
+    }
+    setUploading(false)
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   function handleSignOut() {
@@ -110,16 +153,42 @@ export function ProfilTab({ profile, onLogout }: ProfilTabProps) {
 
   return (
     <div className="flex flex-col items-center gap-6 px-4 pt-8 pb-28">
-      {profile.photo_url ? (
-        <img
-          src={profile.photo_url}
-          alt={profile.prenom}
-          className="w-24 h-24 rounded-full object-cover border-4 border-yellow-fest"
-        />
-      ) : (
-        <div className="w-24 h-24 rounded-full bg-purple-mid flex items-center justify-center font-bangers text-white text-4xl">
-          {profile.prenom[0]}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handlePhotoChange}
+      />
+
+      <button
+        onClick={() => fileInputRef.current?.click()}
+        disabled={uploading}
+        className="relative group disabled:opacity-60"
+        aria-label="Changer la photo de profil"
+      >
+        {profile.photo_url ? (
+          <img
+            src={profile.photo_url}
+            alt={profile.prenom}
+            className="w-24 h-24 rounded-full object-cover border-4 border-yellow-fest"
+          />
+        ) : (
+          <div className="w-24 h-24 rounded-full bg-purple-mid flex items-center justify-center font-bangers text-white text-4xl">
+            {profile.prenom[0]}
+          </div>
+        )}
+        <div className="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity">
+          {uploading ? (
+            <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <span className="text-white text-xl">📷</span>
+          )}
         </div>
+      </button>
+
+      {photoError && (
+        <p className="font-nunito text-pink-fluo text-xs text-center">{photoError}</p>
       )}
 
       <div className="text-center">

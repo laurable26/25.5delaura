@@ -18,6 +18,10 @@ export function EquipesTab() {
   const [selectedProfileId, setSelectedProfileId] = useState('')
   const [assigning, setAssigning] = useState(false)
 
+  // Delete state
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
+
   useEffect(() => { load() }, [])
 
   async function load() {
@@ -67,6 +71,22 @@ export function EquipesTab() {
     setAssigning(false)
   }
 
+  async function handleDelete(equipeId: string) {
+    setDeleting(true)
+    setError(null)
+    // Unassign all members first
+    await supabase.from('profiles').update({ equipe_id: null }).eq('equipe_id', equipeId)
+    const { error: err } = await supabase.from('equipes').delete().eq('id', equipeId)
+    if (err) {
+      setError(err.message)
+    } else {
+      setEquipes((prev) => prev.filter((e) => e.id !== equipeId))
+      setProfiles((prev) => prev.map((p) => p.equipe_id === equipeId ? { ...p, equipe_id: null } : p))
+      setConfirmDeleteId(null)
+    }
+    setDeleting(false)
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center pt-20">
@@ -90,15 +110,36 @@ export function EquipesTab() {
         const unassigned = profiles.filter((p) => !p.equipe_id)
         const isRenaming = renamingId === equipe.id
         const isAssigning = assigningEquipeId === equipe.id
+        const isConfirmingDelete = confirmDeleteId === equipe.id
 
         return (
           <div key={equipe.id} className="bg-white rounded-card border border-border p-4 flex flex-col gap-3">
+            {/* Confirmation suppression */}
+            {isConfirmingDelete && (
+              <div className="bg-red-50 border border-red-200 rounded-btn p-3 flex items-center justify-between gap-3">
+                <p className="font-nunito text-red-600 text-sm">
+                  Supprimer <strong>{equipe.nom}</strong> ? ({members.length} membre{members.length !== 1 ? 's' : ''} désassignés)
+                </p>
+                <div className="flex gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => handleDelete(equipe.id)}
+                    disabled={deleting}
+                    className="px-3 py-1 rounded-btn bg-red-500 text-white font-nunito font-bold text-xs disabled:opacity-50"
+                  >
+                    {deleting ? '...' : 'Supprimer'}
+                  </button>
+                  <button
+                    onClick={() => setConfirmDeleteId(null)}
+                    className="px-3 py-1 rounded-btn bg-bg-main border border-border font-nunito text-purple-mid text-xs"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Header équipe */}
             <div className="flex items-center gap-3">
-              <div
-                className="w-4 h-10 rounded-full flex-shrink-0"
-                style={{ backgroundColor: equipe.couleur ?? '#8B6BAE' }}
-              />
               {isRenaming ? (
                 <input
                   autoFocus
@@ -128,17 +169,25 @@ export function EquipesTab() {
                   </button>
                 </div>
               ) : (
-                <button
-                  onClick={() => { setRenamingId(equipe.id); setRenameValue(equipe.nom) }}
-                  className="flex-shrink-0 px-3 py-1 rounded-btn bg-bg-main border border-border font-nunito text-purple-mid text-xs active:opacity-70"
-                >
-                  ✏️ Renommer
-                </button>
+                <div className="flex gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => { setRenamingId(equipe.id); setRenameValue(equipe.nom) }}
+                    className="px-3 py-1 rounded-btn bg-bg-main border border-border font-nunito text-purple-mid text-xs active:opacity-70"
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    onClick={() => setConfirmDeleteId(equipe.id)}
+                    className="px-3 py-1 rounded-btn bg-bg-main border border-red-200 font-nunito text-red-400 text-xs active:opacity-70"
+                  >
+                    🗑️
+                  </button>
+                </div>
               )}
             </div>
 
             {/* Membres */}
-            <div className="flex flex-col gap-1.5 pl-7">
+            <div className="flex flex-col gap-1.5">
               {members.length === 0 && (
                 <p className="font-nunito text-purple-mid text-xs italic">Aucun membre</p>
               )}
@@ -164,7 +213,7 @@ export function EquipesTab() {
 
             {/* Ajouter un membre */}
             {isAssigning ? (
-              <div className="flex gap-2 pl-7">
+              <div className="flex gap-2">
                 <select
                   value={selectedProfileId}
                   onChange={(e) => setSelectedProfileId(e.target.value)}
@@ -174,7 +223,6 @@ export function EquipesTab() {
                   {unassigned.map((p) => (
                     <option key={p.id} value={p.id}>{p.prenom}</option>
                   ))}
-                  {/* Also allow reassigning from other teams */}
                   {profiles.filter((p) => p.equipe_id && p.equipe_id !== equipe.id).map((p) => {
                     const eq = equipes.find((e) => e.id === p.equipe_id)
                     return (
@@ -199,7 +247,7 @@ export function EquipesTab() {
             ) : (
               <button
                 onClick={() => { setAssigningEquipeId(equipe.id); setSelectedProfileId('') }}
-                className="self-start ml-7 px-3 py-1 rounded-btn bg-bg-main border border-border font-nunito text-purple-mid text-xs active:opacity-70"
+                className="self-start px-3 py-1 rounded-btn bg-bg-main border border-border font-nunito text-purple-mid text-xs active:opacity-70"
               >
                 + Ajouter un membre
               </button>

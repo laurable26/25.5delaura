@@ -44,10 +44,6 @@ export function Laurapiades({ profile }: LaurapiadesProps) {
       <div className="bg-white rounded-card-lg border border-border p-5 flex items-center gap-4">
         {monEquipe ? (
           <>
-            <div
-              className="w-12 h-12 rounded-full flex-shrink-0 border-4 border-yellow-fest"
-              style={{ backgroundColor: monEquipe.couleur ?? '#8B6BAE' }}
-            />
             <div>
               <p className="font-nunito text-purple-mid text-xs">Mon équipe</p>
               <p className="font-bangers text-purple-dark text-2xl tracking-wide leading-tight">{monEquipe.nom}</p>

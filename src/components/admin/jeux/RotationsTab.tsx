@@ -3,15 +3,31 @@ import { supabase } from '../../../lib/supabase'
 import type { Epreuve, Equipe } from '../../../types'
 
 interface Matchup {
-  odd: Equipe
-  even: Equipe
-  epreuve: Epreuve
+  teamA: Equipe
+  teamB: Equipe
 }
 
 interface TourEntry {
   tourNum: number
+  epreuve: Epreuve
   matchups: Matchup[]
-  enPause: Equipe[]
+}
+
+// Circle-method 1-factorization of K_N (N even)
+// Returns N-1 perfect matchings, each covering all N teams
+function computeRoundRobinRounds(N: number): [number, number][][] {
+  const rounds: [number, number][][] = []
+  const rotate = Array.from({ length: N - 1 }, (_, i) => i)
+  const fixed = N - 1
+  for (let r = 0; r < N - 1; r++) {
+    const round: [number, number][] = []
+    round.push([fixed, rotate[r]])
+    for (let i = 1; i < N / 2; i++) {
+      round.push([rotate[(r + i) % (N - 1)], rotate[(r - i + N - 1) % (N - 1)]])
+    }
+    rounds.push(round)
+  }
+  return rounds
 }
 
 function computeSchedule(equipes: Equipe[], epreuves: Epreuve[]): TourEntry[] {
@@ -20,33 +36,18 @@ function computeSchedule(equipes: Equipe[], epreuves: Epreuve[]): TourEntry[] {
     .sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
   const N = sorted.length
   if (N < 2 || N % 2 !== 0) return []
-  const half = N / 2
   const sortedEp = [...epreuves].sort((a, b) => (a.ordre ?? 999) - (b.ordre ?? 999))
   if (sortedEp.length === 0) return []
 
-  const schedule: TourEntry[] = []
-  let globalTour = 1
-
-  for (let batchStart = 0; batchStart < sortedEp.length; batchStart += half) {
-    const batchEp = sortedEp.slice(batchStart, batchStart + half)
-    for (let r = 0; r < half; r++) {
-      const matchups: Matchup[] = []
-      for (let s = 0; s < batchEp.length; s++) {
-        const oddIdx = (s + r) % half
-        const evenIdx = ((s - r) % half + half) % half
-        matchups.push({
-          odd: sorted[2 * oddIdx],
-          even: sorted[2 * evenIdx + 1],
-          epreuve: batchEp[s],
-        })
-      }
-      const activeIds = new Set(matchups.flatMap((m) => [m.odd.id, m.even.id]))
-      const enPause = sorted.filter((e) => !activeIds.has(e.id))
-      schedule.push({ tourNum: globalTour++, matchups, enPause })
-    }
-  }
-
-  return schedule
+  const rrRounds = computeRoundRobinRounds(N)
+  return sortedEp.map((ep, t) => ({
+    tourNum: t + 1,
+    epreuve: ep,
+    matchups: rrRounds[t % (N - 1)].map(([a, b]) => ({
+      teamA: sorted[a],
+      teamB: sorted[b],
+    })),
+  }))
 }
 
 export function RotationsTab() {
@@ -84,18 +85,9 @@ export function RotationsTab() {
   if (equipesWithoutNum.length > 0)
     warnings.push(`${equipesWithoutNum.length} équipe(s) sans numéro : ${equipesWithoutNum.map((e) => e.nom).join(', ')}`)
   if (N > 0 && N % 2 !== 0)
-    warnings.push('Le nombre d\'équipes numérotées doit être pair.')
-  if (epreuves.length > 0 && N >= 2 && epreuves.length % half !== 0) {
-    const lastBatchSize = epreuves.length % half
-    const teamsIdle = N - lastBatchSize * 2
-    warnings.push(
-      `${epreuves.length} épreuves pour ${N} équipes (${half} stations) : le dernier groupe n'a que ${lastBatchSize} épreuve${lastBatchSize > 1 ? 's' : ''} — ${teamsIdle} équipe${teamsIdle > 1 ? 's' : ''} seront en pause à tour de rôle. Chaque équipe joue quand même les ${epreuves.length} épreuves.`
-    )
-  }
+    warnings.push("Le nombre d'équipes numérotées doit être pair.")
 
   const schedule = computeSchedule(equipesWithNum, epreuves)
-  const totalTours = schedule.length
-  const batches = Math.ceil(epreuves.length / (half || 1))
 
   return (
     <div className="flex flex-col gap-4 px-4 pt-6 pb-28">
@@ -103,7 +95,7 @@ export function RotationsTab() {
         <h2 className="font-bangers text-purple-dark text-2xl tracking-wide">Rotations</h2>
         {N >= 2 && N % 2 === 0 && epreuves.length > 0 && (
           <p className="font-nunito text-purple-mid text-sm mt-1">
-            {N} équipes · {epreuves.length} épreuves · {totalTours} tours ({batches} groupes de {half})
+            {N} équipes · {epreuves.length} épreuves · {half} matchs simultanés · toutes les équipes actives à chaque tour
           </p>
         )}
       </div>
@@ -120,52 +112,34 @@ export function RotationsTab() {
         </p>
       )}
 
-      {schedule.map(({ tourNum, matchups, enPause }) => {
-        const batchIndex = Math.floor((tourNum - 1) / half)
-        const isFirstOfBatch = (tourNum - 1) % half === 0
-        return (
-          <div key={tourNum}>
-            {isFirstOfBatch && batches > 1 && (
-              <p className="font-bangers text-purple-mid text-base tracking-wide px-1 pb-1">
-                Groupe {batchIndex + 1} — Épreuves {batchIndex * half + 1}–{Math.min((batchIndex + 1) * half, epreuves.length)}
-              </p>
-            )}
-            <div className="bg-white rounded-card border border-border overflow-hidden">
-              <div className="px-4 py-2 bg-purple-dark">
-                <p className="font-bangers text-yellow-fest text-lg tracking-wide">Tour {tourNum}</p>
-              </div>
-              <div className="divide-y divide-border">
-                {matchups.map((m, s) => (
-                  <div key={s} className="px-4 py-3 flex items-center gap-3">
-                    <div className="w-5 h-5 rounded-full bg-purple-mid bg-opacity-20 flex items-center justify-center flex-shrink-0">
-                      <span className="font-bangers text-purple-dark text-xs">{s + 1}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-nunito text-xs text-purple-mid truncate">{m.epreuve.nom}</p>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="font-nunito font-bold text-purple-dark text-sm">
-                          #{m.odd.numero} {m.odd.nom}
-                        </span>
-                        <span className="font-bangers text-pink-fluo text-sm">vs</span>
-                        <span className="font-nunito font-bold text-purple-dark text-sm">
-                          #{m.even.numero} {m.even.nom}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {enPause.length > 0 && (
-                  <div className="px-4 py-2 bg-gray-50">
-                    <p className="font-nunito text-xs text-purple-mid">
-                      ⏸ En pause : {enPause.map((e) => `#${e.numero} ${e.nom}`).join(', ')}
-                    </p>
-                  </div>
-                )}
-              </div>
+      {schedule.map(({ tourNum, epreuve, matchups }) => (
+        <div key={tourNum} className="bg-white rounded-card border border-border overflow-hidden">
+          <div className="px-4 py-2 bg-purple-dark">
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="font-bangers text-yellow-fest text-lg tracking-wide">Tour {tourNum}</p>
+              <p className="font-nunito text-yellow-fest text-xs opacity-80 truncate">{epreuve.nom}</p>
             </div>
           </div>
-        )
-      })}
+          <div className="divide-y divide-border">
+            {matchups.map((m, s) => (
+              <div key={s} className="px-4 py-3 flex items-center gap-3">
+                <div className="w-5 h-5 rounded-full bg-purple-mid bg-opacity-20 flex items-center justify-center flex-shrink-0">
+                  <span className="font-bangers text-purple-dark text-xs">{s + 1}</span>
+                </div>
+                <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                  <span className="font-nunito font-bold text-purple-dark text-sm">
+                    #{m.teamA.numero} {m.teamA.nom}
+                  </span>
+                  <span className="font-bangers text-pink-fluo text-sm">vs</span>
+                  <span className="font-nunito font-bold text-purple-dark text-sm">
+                    #{m.teamB.numero} {m.teamB.nom}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }

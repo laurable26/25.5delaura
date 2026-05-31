@@ -130,6 +130,21 @@ function MapViewer({ onClose }: { onClose: () => void }) {
   )
 }
 
+function computeRoundRobinRounds(N: number): [number, number][][] {
+  const rounds: [number, number][][] = []
+  const rotate = Array.from({ length: N - 1 }, (_, i) => i)
+  const fixed = N - 1
+  for (let r = 0; r < N - 1; r++) {
+    const round: [number, number][] = []
+    round.push([fixed, rotate[r]])
+    for (let i = 1; i < N / 2; i++) {
+      round.push([rotate[(r + i) % (N - 1)], rotate[(r - i + N - 1) % (N - 1)]])
+    }
+    rounds.push(round)
+  }
+  return rounds
+}
+
 function computeTeamSchedule(
   monEquipe: Equipe,
   equipes: Equipe[],
@@ -140,37 +155,20 @@ function computeTeamSchedule(
     .sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
   const N = sorted.length
   if (N < 2 || N % 2 !== 0 || monEquipe.numero === null) return []
-  const half = N / 2
   const sortedEp = [...epreuves].sort((a, b) => (a.ordre ?? 999) - (b.ordre ?? 999))
   if (sortedEp.length === 0) return []
 
-  const isOdd = monEquipe.numero % 2 !== 0
-  const teamGroupIdx = isOdd
-    ? Math.floor((monEquipe.numero - 1) / 2)
-    : Math.floor(monEquipe.numero / 2) - 1
+  const myIdx = sorted.findIndex((e) => e.id === monEquipe.id)
+  if (myIdx < 0) return []
 
-  const result: Array<{ tour: number; epreuve: Epreuve; adversaire: Equipe }> = []
-  let globalTour = 1
-
-  for (let batchStart = 0; batchStart < sortedEp.length; batchStart += half) {
-    const batchEp = sortedEp.slice(batchStart, batchStart + half)
-    for (let r = 0; r < half; r++) {
-      const stationIdx = isOdd
-        ? ((teamGroupIdx - r) % half + half) % half
-        : (teamGroupIdx + r) % half
-
-      if (stationIdx < batchEp.length) {
-        const epreuve = batchEp[stationIdx]
-        const oddIdx = (stationIdx + r) % half
-        const evenIdx = ((stationIdx - r) % half + half) % half
-        const adversaire = isOdd ? sorted[2 * evenIdx + 1] : sorted[2 * oddIdx]
-        result.push({ tour: globalTour, epreuve, adversaire })
-      }
-      globalTour++
-    }
-  }
-
-  return result
+  const rrRounds = computeRoundRobinRounds(N)
+  return sortedEp.map((ep, t) => {
+    const round = rrRounds[t % (N - 1)]
+    const pair = round.find(([a, b]) => a === myIdx || b === myIdx)!
+    const [a, b] = pair
+    const adversaire = sorted[a === myIdx ? b : a]
+    return { tour: t + 1, epreuve: ep, adversaire }
+  })
 }
 
 export function Laurapiades({ profile }: LaurapiadesProps) {

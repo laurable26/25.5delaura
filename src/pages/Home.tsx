@@ -185,7 +185,7 @@ export function Home({ profile, coinPhotoUrl, onProfileUpdate, onLogout }: HomeP
                 requiredRoles={['admin_ventes', 'admin_general']}
                 element={
                   <>
-                    <Header title="🛒 Dépense" showBack />
+                    <Header title="🛒 Commande" showBack />
                     <DepenseTab />
                   </>
                 }

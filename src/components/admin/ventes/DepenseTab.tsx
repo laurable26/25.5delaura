@@ -322,7 +322,7 @@ export function DepenseTab() {
   // Select user view
   return (
     <div className="flex flex-col gap-4 px-4 pt-6 pb-28">
-      <h2 className="font-bangers text-purple-dark text-2xl tracking-wide">Nouvelle dépense</h2>
+      <h2 className="font-bangers text-purple-dark text-2xl tracking-wide">Nouvelle commande</h2>
 
       <input
         type="text"

@@ -35,7 +35,7 @@ const JEUX_ITEMS: AccesItem[] = [
 ]
 
 const VENTES_ITEMS: AccesItem[] = [
-  { label: 'Admin : Dépense',   emoji: '🛒', action: 'navigate', target: '/admin/depense' },
+  { label: 'Admin : Commande', emoji: '🛒', action: 'navigate', target: '/admin/depense' },
   { label: 'Admin : Catalogue', emoji: '📦', action: 'navigate', target: '/admin/catalogue' },
 ]
 

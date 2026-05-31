@@ -1,8 +1,6 @@
-import { useState } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { useNavigate, Routes, Route, Navigate } from 'react-router-dom'
 import { Header } from '../components/layout/Header'
 import { Dashboard } from '../components/invite/Dashboard'
-import { AccesUtilesDrawer } from '../components/invite/AccesUtilesDrawer'
 import { Laurapiades } from '../components/invite/Laurapiades'
 import { ProfilTab } from '../components/invite/ProfilTab'
 import { RolesTab } from '../components/admin/general/RolesTab'
@@ -40,8 +38,7 @@ function GuardedRoute({ profile, requiredRoles, element }: GuardedRouteProps) {
 }
 
 export function Home({ profile, coinPhotoUrl, onProfileUpdate, onLogout }: HomeProps) {
-  const [drawerOpen, setDrawerOpen] = useState(false)
-  const [showTransfer, setShowTransfer] = useState(false)
+  const navigate = useNavigate()
 
   return (
     <div className="min-h-screen bg-bg-main">
@@ -56,14 +53,12 @@ export function Home({ profile, coinPhotoUrl, onProfileUpdate, onLogout }: HomeP
                   subtitle={`Bonjour ${profile.prenom} !`}
                   profilePhotoUrl={profile.photo_url}
                   profilePrenom={profile.prenom}
-                  onProfileClick={() => setDrawerOpen(true)}
+                  onProfileClick={() => navigate('/profil')}
                 />
                 <Dashboard
                   profile={profile}
                   coinPhotoUrl={coinPhotoUrl}
                   onProfileUpdate={onProfileUpdate}
-                  showTransferFromDrawer={showTransfer}
-                  onTransferClose={() => setShowTransfer(false)}
                 />
               </>
             }
@@ -215,13 +210,6 @@ export function Home({ profile, coinPhotoUrl, onProfileUpdate, onLogout }: HomeP
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-
-        <AccesUtilesDrawer
-          profile={profile}
-          open={drawerOpen}
-          onClose={() => setDrawerOpen(false)}
-          onTransfer={() => { setShowTransfer(true) }}
-        />
       </div>
     </div>
   )

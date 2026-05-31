@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../../lib/supabase'
+import { hashPin } from '../../../lib/bcrypt'
 import type { Profile, UserRole } from '../../../types'
 
 async function createGuest(prenom: string, initialPin: string): Promise<string | null> {
@@ -35,28 +36,38 @@ export function RolesTab() {
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  // Create form
   const [newPrenom, setNewPrenom] = useState('')
   const [newPin, setNewPin] = useState('0000')
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
   const [createSuccess, setCreateSuccess] = useState<string | null>(null)
 
+  // Edit state
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editPrenom, setEditPrenom] = useState('')
+  const [editPin, setEditPin] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
+
   useEffect(() => {
-    async function load() {
-      setLoading(true)
-      const { data, error: fetchError } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('prenom')
-      if (fetchError) {
-        setError(fetchError.message)
-      } else {
-        setProfiles(data ?? [])
-      }
-      setLoading(false)
-    }
     load()
   }, [])
+
+  async function load() {
+    setLoading(true)
+    const { data, error: fetchError } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('prenom')
+    if (fetchError) {
+      setError(fetchError.message)
+    } else {
+      setProfiles(data ?? [])
+    }
+    setLoading(false)
+  }
 
   async function handleRoleChange(userId: string, newRole: UserRole) {
     setUpdating(userId)
@@ -65,15 +76,49 @@ export function RolesTab() {
       .from('profiles')
       .update({ role: newRole })
       .eq('id', userId)
-
     if (updateError) {
       setError(updateError.message)
     } else {
-      setProfiles((prev) =>
-        prev.map((p) => (p.id === userId ? { ...p, role: newRole } : p))
-      )
+      setProfiles((prev) => prev.map((p) => p.id === userId ? { ...p, role: newRole } : p))
     }
     setUpdating(null)
+  }
+
+  function startEdit(profile: Profile) {
+    setEditingId(profile.id)
+    setEditPrenom(profile.prenom)
+    setEditPin('')
+    setEditError(null)
+  }
+
+  async function handleSaveEdit(userId: string) {
+    if (!editPrenom.trim()) return
+    if (editPin && !/^\d{4}$/.test(editPin)) {
+      setEditError('Le code doit être 4 chiffres')
+      return
+    }
+    setEditSaving(true)
+    setEditError(null)
+
+    const updates: Record<string, unknown> = { prenom: editPrenom.trim() }
+    if (editPin) {
+      updates.pin_hash = await hashPin(editPin)
+    }
+
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update(updates)
+      .eq('id', userId)
+
+    if (updateError) {
+      setEditError(updateError.message)
+    } else {
+      setProfiles((prev) =>
+        prev.map((p) => p.id === userId ? { ...p, prenom: editPrenom.trim() } : p)
+      )
+      setEditingId(null)
+    }
+    setEditSaving(false)
   }
 
   async function handleCreate(e: React.FormEvent) {
@@ -90,7 +135,6 @@ export function RolesTab() {
       setCreateSuccess(`${newPrenom.trim()} créé avec le code ${newPin}`)
       setNewPrenom('')
       setNewPin('0000')
-      // Reload profiles list
       const { data } = await supabase.from('profiles').select('*').order('prenom')
       setProfiles(data ?? [])
     }
@@ -106,7 +150,7 @@ export function RolesTab() {
   }
 
   return (
-    <div className="flex flex-col gap-4 px-4 pt-6 pb-28">
+    <div className="flex flex-col gap-4 px-4 pt-6 pb-10">
       <h2 className="font-bangers text-purple-dark text-2xl tracking-wide">Gestion des rôles</h2>
 
       {/* Créer un invité */}
@@ -150,40 +194,86 @@ export function RolesTab() {
       )}
 
       <div className="flex flex-col gap-3">
-        {profiles.map((profile) => (
-          <div
-            key={profile.id}
-            className="bg-white rounded-card border border-border p-4 flex items-center gap-3"
-          >
-            {profile.photo_url ? (
-              <img
-                src={profile.photo_url}
-                alt={profile.prenom}
-                className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-              />
-            ) : (
-              <div className="w-10 h-10 rounded-full bg-purple-mid flex items-center justify-center font-bangers text-white text-lg flex-shrink-0">
-                {profile.prenom[0]}
+        {profiles.map((profile) => {
+          const isEditing = editingId === profile.id
+          return (
+            <div key={profile.id} className="bg-white rounded-card border border-border p-4 flex flex-col gap-3">
+              {/* Header ligne */}
+              <div className="flex items-center gap-3">
+                {profile.photo_url ? (
+                  <img src={profile.photo_url} alt={profile.prenom} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-purple-mid flex items-center justify-center font-bangers text-white text-lg flex-shrink-0">
+                    {profile.prenom[0]}
+                  </div>
+                )}
+                <p className="font-nunito font-bold text-purple-dark flex-1">{profile.prenom}</p>
+                <select
+                  value={profile.role}
+                  onChange={(e) => handleRoleChange(profile.id, e.target.value as UserRole)}
+                  disabled={updating === profile.id}
+                  className="font-nunito text-purple-dark text-sm border border-border rounded-btn px-2 py-1 bg-bg-main disabled:opacity-50"
+                >
+                  {ROLES.map((r) => (
+                    <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => isEditing ? setEditingId(null) : startEdit(profile)}
+                  className="w-7 h-7 flex items-center justify-center rounded bg-bg-main border border-border text-purple-mid text-sm active:opacity-60 flex-shrink-0"
+                >
+                  {isEditing ? '✕' : '✏️'}
+                </button>
               </div>
-            )}
-            <p className="font-nunito font-bold text-purple-dark flex-1">{profile.prenom}</p>
-            <select
-              value={profile.role}
-              onChange={(e) => handleRoleChange(profile.id, e.target.value as UserRole)}
-              disabled={updating === profile.id}
-              className="font-nunito text-purple-dark text-sm border border-border rounded-btn px-2 py-1 bg-bg-main disabled:opacity-50"
-            >
-              {ROLES.map((r) => (
-                <option key={r} value={r}>
-                  {ROLE_LABELS[r]}
-                </option>
-              ))}
-            </select>
-            {updating === profile.id && (
-              <span className="text-purple-mid text-xs font-nunito">...</span>
-            )}
-          </div>
-        ))}
+
+              {/* Inline edit */}
+              {isEditing && (
+                <div className="border-t border-border pt-3 flex flex-col gap-2">
+                  <div>
+                    <label className="font-nunito text-xs text-purple-mid block mb-1">Prénom</label>
+                    <input
+                      autoFocus
+                      type="text"
+                      value={editPrenom}
+                      onChange={(e) => setEditPrenom(e.target.value)}
+                      className="w-full border border-border rounded-btn px-3 py-2 font-nunito text-purple-dark text-sm bg-bg-main"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-nunito text-xs text-purple-mid block mb-1">
+                      Nouveau code PIN <span className="opacity-60">(laisser vide pour ne pas changer)</span>
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={4}
+                      placeholder="ex: 1234"
+                      value={editPin}
+                      onChange={(e) => setEditPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                      className="w-24 border border-border rounded-btn px-3 py-2 font-nunito text-purple-dark text-sm bg-bg-main text-center tracking-widest"
+                    />
+                  </div>
+                  {editError && <p className="font-nunito text-pink-fluo text-xs">{editError}</p>}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleSaveEdit(profile.id)}
+                      disabled={editSaving || !editPrenom.trim()}
+                      className="flex-1 py-2 rounded-btn bg-yellow-fest text-purple-dark font-nunito font-bold text-sm disabled:opacity-50"
+                    >
+                      {editSaving ? '...' : '✓ Sauvegarder'}
+                    </button>
+                    <button
+                      onClick={() => setEditingId(null)}
+                      className="px-4 py-2 rounded-btn bg-bg-main border border-border font-nunito text-purple-mid text-sm"
+                    >
+                      Annuler
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )

@@ -28,10 +28,26 @@ export default function App() {
   const [pendingTxId, setPendingTxId] = useState<string | null>(null)
 
   const handlePendingTx = useCallback((txId: string) => {
-    setPendingTxId(txId)
+    setPendingTxId((prev) => prev ?? txId)
   }, [])
 
   useRealtimePendingTransaction(session?.user?.id, handlePendingTx)
+
+  // Fallback: check for pending transactions on mount (in case realtime event was missed)
+  useEffect(() => {
+    if (!session?.user?.id) return
+    supabase
+      .from('transactions')
+      .select('id')
+      .eq('receveur_id', session.user.id)
+      .eq('statut', 'en_attente')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.id) setPendingTxId((prev) => prev ?? data.id)
+      })
+  }, [session?.user?.id])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session: s } }) => {

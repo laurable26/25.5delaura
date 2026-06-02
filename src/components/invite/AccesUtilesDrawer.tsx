@@ -37,11 +37,16 @@ const GENERAL_ITEMS: AccesItem[] = [
   { label: 'Admin : Bonus / Malus',emoji: '⚡', action: 'navigate', target: '/admin/bonus',  admin: true },
 ]
 
-function getItems(role: UserRole): AccesItem[] {
-  if (role === 'admin_general') return [...BASE_ITEMS, ...JEUX_ITEMS, ...VENTES_ITEMS, ...GENERAL_ITEMS]
-  if (role === 'admin_jeux')    return [...BASE_ITEMS, ...JEUX_ITEMS]
-  if (role === 'admin_ventes')  return [...BASE_ITEMS, ...VENTES_ITEMS]
-  return BASE_ITEMS
+function getAllItems(): AccesItem[] {
+  return [...BASE_ITEMS, ...JEUX_ITEMS, ...VENTES_ITEMS, ...GENERAL_ITEMS]
+}
+
+function isAllowed(item: AccesItem, role: UserRole): boolean {
+  if (!item.admin) return true
+  if (role === 'admin_general') return true
+  if (role === 'admin_jeux')    return JEUX_ITEMS.includes(item)
+  if (role === 'admin_ventes')  return VENTES_ITEMS.includes(item)
+  return false
 }
 
 interface AccesUtilesDrawerProps {
@@ -69,7 +74,7 @@ export function AccesUtilesDrawer({ profile, open, onClose, onTransfer }: AccesU
     }
   }
 
-  const items = getItems(profile.role)
+  const items = getAllItems()
 
   return (
     <>
@@ -103,23 +108,29 @@ export function AccesUtilesDrawer({ profile, open, onClose, onTransfer }: AccesU
 
         {/* Items */}
         <div className="flex flex-col gap-2 p-4 pb-10">
-          {items.map((item) => (
-            <button
-              key={item.label}
-              onClick={() => handleItem(item)}
-              className={`w-full flex items-center gap-4 rounded-card border px-4 py-3 active:opacity-70 transition-colors text-left ${
-                item.admin
-                  ? 'bg-purple-dark/5 border-purple-dark/20'
-                  : 'bg-white border-border'
-              }`}
-            >
-              <span className="text-xl">{item.emoji}</span>
-              <span className={`font-nunito font-bold text-base ${item.admin ? 'text-purple-dark/80' : 'text-purple-dark'}`}>
-                {item.label}
-              </span>
-              <span className="ml-auto text-purple-mid text-lg">›</span>
-            </button>
-          ))}
+          {items.map((item) => {
+            const allowed = isAllowed(item, profile.role)
+            return (
+              <button
+                key={item.label}
+                onClick={() => allowed && handleItem(item)}
+                disabled={!allowed}
+                className={`w-full flex items-center gap-4 rounded-card border px-4 py-3 transition-colors text-left ${
+                  !allowed
+                    ? 'bg-gray-100 border-gray-200 opacity-50 cursor-not-allowed'
+                    : item.admin
+                    ? 'bg-purple-dark/5 border-purple-dark/20 active:opacity-70'
+                    : 'bg-white border-border active:opacity-70'
+                }`}
+              >
+                <span className="text-xl">{item.emoji}</span>
+                <span className={`font-nunito font-bold text-base ${!allowed ? 'text-gray-400' : item.admin ? 'text-purple-dark/80' : 'text-purple-dark'}`}>
+                  {item.label}
+                </span>
+                <span className={`ml-auto text-lg ${!allowed ? 'text-gray-300' : 'text-purple-mid'}`}>›</span>
+              </button>
+            )
+          })}
         </div>
       </div>
     </>

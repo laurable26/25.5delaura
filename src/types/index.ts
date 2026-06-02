@@ -55,6 +55,7 @@ export interface ResultatEpreuve {
   resultat: 'victoire' | 'defaite' | null
   score: number | null
   blerhams_attribues: number
+  confirme: boolean
   created_at: string
 }
 

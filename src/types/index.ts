@@ -63,14 +63,14 @@ export interface ResultatEpreuve {
   created_at: string
 }
 
-export type LaurapiadesStatut = 'attente' | 'en_cours' | 'termine'
-export type TourStatut = 'en_jeu' | 'attente_resultats' | 'termine'
+export type LaurapiadesStatut = 'attente' | 'onboarding' | 'en_cours' | 'termine'
+export type TourStatut = 'en_cours' | 'attente_resultats'
 
 export interface LaurapiadesSession {
   id: string
   statut: LaurapiadesStatut
-  tour_actif: number | null
-  tour_statut: TourStatut | null
+  tour_actif: number
+  tour_statut: TourStatut
   created_at: string
 }
 

@@ -118,7 +118,7 @@ function ControleTab({ session, equipes, profiles, acting, onRpc }: {
 }) {
   const statut = session?.statut ?? null
   const tourActif = session?.tour_actif ?? 0
-  const tourStatut = session?.tour_statut ?? null
+  const tourStatut = session?.tour_statut ?? 'en_cours'
 
   // Onboarding progress per team
   const onboardingStatus = equipes.map((eq) => {
@@ -148,7 +148,7 @@ function ControleTab({ session, equipes, profiles, acting, onRpc }: {
             {acting ? '...' : '🚀 Démarrer les Laurapiades'}
           </button>
         )}
-        {statut === 'en_cours' && tourActif === 0 && (
+        {statut === 'onboarding' && (
           <button
             onClick={() => onRpc('lancer_tour', { p_tour: 1 })}
             disabled={acting || !allReady}
@@ -165,11 +165,11 @@ function ControleTab({ session, equipes, profiles, acting, onRpc }: {
             </div>
             <div className="flex items-center justify-between bg-bg-main rounded-btn px-3 py-2">
               <span className="font-nunito text-purple-dark text-sm">Statut</span>
-              <span className={`font-nunito text-sm font-bold ${tourStatut === 'en_jeu' ? 'text-pink-fluo' : tourStatut === 'attente_resultats' ? 'text-yellow-600' : 'text-green-600'}`}>
-                {tourStatut === 'en_jeu' ? '🔥 En jeu' : tourStatut === 'attente_resultats' ? '📝 Résultats attendus' : '✓ Terminé'}
+              <span className={`font-nunito text-sm font-bold ${tourStatut === 'en_cours' ? 'text-pink-fluo' : 'text-yellow-600'}`}>
+                {tourStatut === 'en_cours' ? '🔥 En jeu' : '📝 Résultats attendus'}
               </span>
             </div>
-            {tourStatut === 'en_jeu' && (
+            {tourStatut === 'en_cours' && (
               <button onClick={() => onRpc('terminer_tour', { p_tour: tourActif })} disabled={acting}
                 className="py-3 rounded-btn bg-yellow-fest text-purple-dark font-nunito font-bold text-sm disabled:opacity-50 active:opacity-80">
                 {acting ? '...' : '⏹️ Terminer le Tour ' + tourActif + ' (demander les résultats)'}
@@ -195,7 +195,7 @@ function ControleTab({ session, equipes, profiles, acting, onRpc }: {
       </div>
 
       {/* Onboarding status */}
-      {statut === 'en_cours' && tourActif === 0 && (
+      {statut === 'onboarding' && (
         <div className="flex flex-col gap-3">
           <p className="font-bangers text-purple-dark text-lg tracking-wide">Progression onboarding</p>
           {onboardingStatus.map(({ equipe, members, confirmed, hasChef, hasNom }) => (

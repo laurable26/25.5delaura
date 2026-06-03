@@ -274,7 +274,7 @@ export function Laurapiades({ profile }: LaurapiadesProps) {
   async function handleConfirmEquipe() {
     setConfirmingEquipe(true)
     setOnboardingError(null)
-    const { error } = await supabase.rpc('confirmer_equipe', { p_user_id: profile.id })
+    const { error } = await supabase.rpc('confirmer_equipe')
     if (error) {
       setOnboardingError(error.message)
     } else {
@@ -289,7 +289,6 @@ export function Laurapiades({ profile }: LaurapiadesProps) {
     setOnboardingError(null)
     const { error } = await supabase.rpc('voter_chef', {
       p_equipe_id: profile.equipe_id,
-      p_votant_id: profile.id,
       p_candidat_id: candidatId,
     })
     if (error) {
@@ -307,7 +306,6 @@ export function Laurapiades({ profile }: LaurapiadesProps) {
     setOnboardingError(null)
     const { error } = await supabase.rpc('valider_nom_equipe', {
       p_equipe_id: profile.equipe_id,
-      p_chef_id: profile.id,
       p_nom: nom,
     })
     if (error) {

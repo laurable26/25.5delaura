@@ -21,10 +21,10 @@ const BASE_ITEMS: AccesItem[] = [
 ]
 
 const JEUX_ITEMS: AccesItem[] = [
-  { label: 'Admin : Laurapiades', emoji: '🏆', action: 'navigate', target: '/admin/laurapiades', admin: true },
-  { label: 'Admin : Épreuves',    emoji: '🎮', action: 'navigate', target: '/admin/epreuves',    admin: true },
-  { label: 'Admin : Classement',  emoji: '📊', action: 'navigate', target: '/admin/classement',  admin: true },
-  { label: 'Admin : Équipes',     emoji: '👥', action: 'navigate', target: '/admin/equipes',     admin: true },
+  { label: 'Admin : Laurapiades 🏆', emoji: '🏆', action: 'navigate', target: '/admin/laurapiades', admin: true },
+  { label: 'Admin : Épreuves',       emoji: '🎮', action: 'navigate', target: '/admin/epreuves',    admin: true },
+  { label: 'Admin : Classement',     emoji: '📊', action: 'navigate', target: '/admin/classement',  admin: true },
+  { label: 'Admin : Équipes',        emoji: '👥', action: 'navigate', target: '/admin/equipes',     admin: true },
 ]
 
 const VENTES_ITEMS: AccesItem[] = [

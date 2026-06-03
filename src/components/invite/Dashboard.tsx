@@ -87,9 +87,10 @@ export function Dashboard({ profile, onProfileUpdate }: DashboardProps) {
   }
 
   const isAdmin = profile.role !== 'invite'
-  const items = getItems(profile.role).filter(
-    (item) => isAdmin || !item.flagKey || flags[item.flagKey] !== false
-  )
+  const items = getItems(profile.role).map((item) => ({
+    ...item,
+    locked: !isAdmin && !!item.flagKey && flags[item.flagKey] === false,
+  }))
 
   return (
     <div className="flex flex-col gap-6 px-4 pt-6 pb-10">
@@ -107,12 +108,22 @@ export function Dashboard({ profile, onProfileUpdate }: DashboardProps) {
         {items.map((item) => (
           <button
             key={item.label}
-            onClick={() => handleAcces(item)}
-            className="w-full flex items-center gap-4 bg-white rounded-card border border-border px-4 py-4 active:bg-bg-main transition-colors text-left"
+            onClick={() => !item.locked && handleAcces(item)}
+            disabled={item.locked}
+            className={`w-full flex items-center gap-4 bg-white rounded-card border px-4 py-4 text-left transition-colors ${
+              item.locked
+                ? 'border-border opacity-40 cursor-not-allowed'
+                : 'border-border active:bg-bg-main'
+            }`}
           >
             <span className="text-2xl">{item.emoji}</span>
-            <span className="font-nunito font-bold text-purple-dark text-base">{item.label}</span>
-            <span className="ml-auto text-purple-mid text-lg">›</span>
+            <span className={`font-nunito font-bold text-base ${item.locked ? 'text-purple-mid' : 'text-purple-dark'}`}>
+              {item.label}
+            </span>
+            {item.locked
+              ? <span className="ml-auto text-purple-mid text-sm">🔒</span>
+              : <span className="ml-auto text-purple-mid text-lg">›</span>
+            }
           </button>
         ))}
       </div>

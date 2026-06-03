@@ -181,7 +181,7 @@ export function Laurapiades({ profile }: LaurapiadesProps) {
       setCoequipiers(coEq ?? [])
       setMonVote(vote ?? null)
 
-      if (sess?.tour_actif !== null && sess?.tour_actif !== undefined) {
+      if (sess?.tour_actif && sess.tour_actif > 0) {
         const { data: res } = await supabase
           .from('resultats_epreuves')
           .select('*')
@@ -236,15 +236,15 @@ export function Laurapiades({ profile }: LaurapiadesProps) {
 
   // ── Determine onboarding step ──────────────────────────────────────────────
   const sessionStatut = session?.statut ?? 'attente'
-  const tourActif = session?.tour_actif ?? null
+  const tourActif = session?.tour_actif ?? 0
   const tourStatut = session?.tour_statut ?? null
 
   // Determine current onboarding "sub-step"
   type OnbStep = 'no_session' | 'no_equipe' | 'confirm_equipe' | 'vote_chef' | 'attente_vote' | 'nom_chef' | 'nom_attente' | 'attente_lancement' | 'jeu'
   let onbStep: OnbStep = 'no_session'
 
-  if (sessionStatut === 'en_cours' || sessionStatut === 'termine') {
-    if (tourActif !== null) {
+  if (sessionStatut === 'onboarding' || sessionStatut === 'en_cours' || sessionStatut === 'termine') {
+    if (tourActif > 0) {
       onbStep = 'jeu'
     } else {
       // Onboarding phase
@@ -266,7 +266,7 @@ export function Laurapiades({ profile }: LaurapiadesProps) {
     }
   }
 
-  if (sessionStatut === 'termine' && tourActif !== null) {
+  if (sessionStatut === 'termine' && tourActif > 0) {
     onbStep = 'jeu'
   }
 
@@ -322,7 +322,7 @@ export function Laurapiades({ profile }: LaurapiadesProps) {
   const teamSchedule = monEquipe ? computeTeamSchedule(monEquipe, allEquipes, epreuves) : []
 
   async function handleConfirmResult() {
-    if (!monEquipe || tourActif === null) return
+    if (!monEquipe || tourActif === 0) return
     const currentMatchup = teamSchedule.find((s) => s.tourNum === tourActif)
     if (!currentMatchup) return
     setSubmitting(true)

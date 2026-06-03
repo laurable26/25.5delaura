@@ -23,7 +23,7 @@ export function TransferModal({ profile, onClose, onSuccess }: TransferModalProp
     async function loadGuests() {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, prenom, photo_url, solde, pin_hash, equipe_id, role, created_at')
+        .select('id, prenom, photo_url, solde, pin_hash, equipe_id, role, laurapiades_equipe_confirmee, created_at')
         .neq('id', profile.id)
         .order('prenom')
 

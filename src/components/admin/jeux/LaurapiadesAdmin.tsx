@@ -117,7 +117,7 @@ function ControleTab({ session, equipes, profiles, acting, onRpc }: {
   onRpc: (fn: string, params?: Record<string, unknown>) => void
 }) {
   const statut = session?.statut ?? null
-  const tourActif = session?.tour_actif ?? null
+  const tourActif = session?.tour_actif ?? 0
   const tourStatut = session?.tour_statut ?? null
 
   // Onboarding progress per team
@@ -148,7 +148,7 @@ function ControleTab({ session, equipes, profiles, acting, onRpc }: {
             {acting ? '...' : '🚀 Démarrer les Laurapiades'}
           </button>
         )}
-        {statut === 'en_cours' && tourActif === null && (
+        {statut === 'en_cours' && tourActif === 0 && (
           <button
             onClick={() => onRpc('lancer_tour', { p_tour: 1 })}
             disabled={acting || !allReady}
@@ -157,7 +157,7 @@ function ControleTab({ session, equipes, profiles, acting, onRpc }: {
             {acting ? '...' : !allReady ? '⏳ En attente des équipes...' : '▶️ Lancer le Tour 1'}
           </button>
         )}
-        {statut === 'en_cours' && tourActif !== null && (
+        {statut === 'en_cours' && tourActif > 0 && (
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between bg-bg-main rounded-btn px-3 py-2">
               <span className="font-nunito text-purple-dark text-sm">Tour actif</span>
@@ -195,7 +195,7 @@ function ControleTab({ session, equipes, profiles, acting, onRpc }: {
       </div>
 
       {/* Onboarding status */}
-      {statut === 'en_cours' && tourActif === null && (
+      {statut === 'en_cours' && tourActif === 0 && (
         <div className="flex flex-col gap-3">
           <p className="font-bangers text-purple-dark text-lg tracking-wide">Progression onboarding</p>
           {onboardingStatus.map(({ equipe, members, confirmed, hasChef, hasNom }) => (
@@ -281,7 +281,6 @@ function ResultatsView({ session, equipes, epreuves, resultats, acting, onRpc }:
   const [editResultat, setEditResultat] = useState<'victoire' | 'defaite' | null>(null)
   const [editScore, setEditScore] = useState('')
   const tourActif = session?.tour_actif ?? 0
-
   const sorted = [...equipes].filter((e) => e.numero !== null).sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
   const sortedEp = [...epreuves].sort((a, b) => (a.ordre ?? 999) - (b.ordre ?? 999))
 

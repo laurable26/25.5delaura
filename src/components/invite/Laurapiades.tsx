@@ -16,6 +16,12 @@ const SCHEDULE: [number, number, number][][] = [
   [[1,2,6],[0,4,7],[3,5,8]],
 ]
 
+function nomEquipe(eq: Equipe): string {
+  if (eq.nom_choisi) return eq.nom_choisi
+  if (eq.numero !== null) return `#${eq.numero}`
+  return eq.nom
+}
+
 interface LaurapiadesProps {
   profile: Profile
 }
@@ -384,8 +390,8 @@ export function Laurapiades({ profile }: LaurapiadesProps) {
         {onbStep === 'no_equipe' && <NoEquipe />}
         {onbStep === 'confirm_equipe' && (
           <ConfirmEquipeStep
-            equipeNom={monEquipe?.nom ?? profile.equipe_id ?? '?'}
-            equipeNum={monEquipe?.numero ?? null}
+            equipeNom={monEquipe ? nomEquipe(monEquipe) : (profile.equipe_id ?? '?')}
+            equipeNum={null}
             loading={confirmingEquipe}
             error={onboardingError}
             onConfirm={handleConfirmEquipe}
@@ -609,7 +615,7 @@ function AttenteLancementStep({ equipe }: { equipe: Equipe | null }) {
     <div className="flex flex-col items-center gap-4 py-8 text-center">
       <span className="text-5xl">🎉</span>
       <h2 className="font-bangers text-purple-dark text-2xl tracking-wide">
-        {equipe?.nom_choisi ?? equipe?.nom ?? 'Votre équipe'}
+        {equipe ? nomEquipe(equipe) : 'Votre équipe'}
       </h2>
       <p className="font-nunito text-purple-mid text-sm">Tout est prêt ! En attente que toutes les équipes finissent et que l'admin lance le Tour 1.</p>
       {equipe?.chef_id && (
@@ -660,8 +666,7 @@ function JeuView({
         <div>
           <p className="font-nunito text-purple-mid text-xs">Mon équipe</p>
           <p className="font-bangers text-purple-dark text-xl tracking-wide">
-            {monEquipe.nom_choisi ?? monEquipe.nom}
-            {monEquipe.numero !== null && <span className="text-purple-mid text-base ml-1">#{monEquipe.numero}</span>}
+            {nomEquipe(monEquipe)}
           </p>
         </div>
       </div>
@@ -726,10 +731,7 @@ function JeuView({
             <div className="px-4 py-3 flex flex-col gap-1">
               <p className="font-nunito font-bold text-purple-dark text-sm">{epreuve.nom}</p>
               <p className="font-nunito text-purple-mid text-xs">
-                vs <span className="font-bold text-purple-dark">
-                  {adversaire.nom_choisi ?? adversaire.nom}
-                  {adversaire.numero !== null && ` (#${adversaire.numero})`}
-                </span>
+                vs <span className="font-bold text-purple-dark">{nomEquipe(adversaire)}</span>
               </p>
               <p className="font-nunito text-purple-mid text-xs">
                 {epreuve.mode === 'gagnant_perdant'

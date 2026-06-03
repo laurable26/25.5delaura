@@ -2,6 +2,12 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../../../lib/supabase'
 import type { Equipe, Epreuve, Profile, ResultatEpreuve, LaurapiadesSession } from '../../../types'
 
+function nomEquipe(eq: Equipe): string {
+  if (eq.nom_choisi) return eq.nom_choisi
+  if (eq.numero !== null) return `#${eq.numero}`
+  return eq.nom
+}
+
 const SCHEDULE: [number, number, number][][] = [
   [[0,3,0],[1,4,1],[2,5,2]],
   [[0,4,3],[1,5,4],[2,3,5]],
@@ -202,8 +208,7 @@ function ControleTab({ session, equipes, profiles, acting, onRpc }: {
             <div key={equipe.id} className="bg-white rounded-card border border-border p-4 flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <p className="font-nunito font-bold text-purple-dark text-sm">
-                  {equipe.nom_choisi ?? equipe.nom}
-                  {equipe.numero !== null && <span className="text-purple-mid font-normal"> #{equipe.numero}</span>}
+                  {nomEquipe(equipe)}
                 </p>
                 {hasNom
                   ? <span className="text-green-600 text-sm font-bold">✓ Prêt</span>
@@ -252,9 +257,9 @@ function RotationsView({ equipes, epreuves }: { equipes: Equipe[]; epreuves: Epr
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-nunito font-bold text-purple-dark text-sm">
-                    {sorted[a].nom_choisi ?? sorted[a].nom}
+                    {nomEquipe(sorted[a])}
                     <span className="font-bangers text-pink-fluo mx-1">vs</span>
-                    {sorted[b].nom_choisi ?? sorted[b].nom}
+                    {nomEquipe(sorted[b])}
                   </p>
                   <p className="font-nunito text-purple-mid text-xs truncate">→ {sortedEp[ep].nom}</p>
                 </div>
@@ -328,7 +333,7 @@ function ResultatsView({ session, equipes, epreuves, resultats, acting, onRpc }:
                         const isEditing = editingId === uid
                         return (
                           <div key={eq.id} className="flex-1 bg-bg-main rounded-btn p-2 flex flex-col gap-1">
-                            <p className="font-nunito font-bold text-purple-dark text-xs truncate">{eq.nom_choisi ?? eq.nom}</p>
+                            <p className="font-nunito font-bold text-purple-dark text-xs truncate">{nomEquipe(eq)}</p>
                             {res?.confirme ? (
                               isEditing ? (
                                 <div className="flex flex-col gap-1">

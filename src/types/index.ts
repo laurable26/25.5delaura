@@ -8,6 +8,7 @@ export interface Profile {
   solde: number
   equipe_id: string | null
   role: UserRole
+  laurapiades_equipe_confirmee: boolean
   created_at: string
 }
 
@@ -16,6 +17,8 @@ export interface Equipe {
   nom: string
   couleur: string | null
   numero: number | null
+  chef_id: string | null
+  nom_choisi: string | null
   created_at: string
 }
 
@@ -56,6 +59,26 @@ export interface ResultatEpreuve {
   score: number | null
   blerhams_attribues: number
   confirme: boolean
+  tour: number | null
+  created_at: string
+}
+
+export type LaurapiadesStatut = 'attente' | 'en_cours' | 'termine'
+export type TourStatut = 'en_jeu' | 'attente_resultats' | 'termine'
+
+export interface LaurapiadesSession {
+  id: string
+  statut: LaurapiadesStatut
+  tour_actif: number | null
+  tour_statut: TourStatut | null
+  created_at: string
+}
+
+export interface VoteChef {
+  id: string
+  equipe_id: string
+  votant_id: string
+  candidat_id: string
   created_at: string
 }
 

@@ -11,6 +11,7 @@ import { EpreuvesTab } from '../components/admin/jeux/EpreuvesTab'
 import { RotationsTab } from '../components/admin/jeux/RotationsTab'
 import { ClassementTab } from '../components/admin/jeux/ClassementTab'
 import { EquipesTab } from '../components/admin/jeux/EquipesTab'
+import { LaurapiadesAdmin } from '../components/admin/jeux/LaurapiadesAdmin'
 import { CatalogueTab } from '../components/admin/ventes/CatalogueTab'
 import { DepenseTab } from '../components/admin/ventes/DepenseTab'
 import type { Profile, UserRole } from '../types'
@@ -201,6 +202,22 @@ export function Home({ profile, onProfileUpdate, onLogout }: HomeProps) {
                   <>
                     <Header title="👥 Équipes" showBack />
                     <EquipesTab />
+                  </>
+                }
+              />
+            }
+          />
+
+          <Route
+            path="/admin/laurapiades"
+            element={
+              <GuardedRoute
+                profile={profile}
+                requiredRoles={['admin_jeux', 'admin_general']}
+                element={
+                  <>
+                    <Header title="🏆 Laurapiades" showBack />
+                    <LaurapiadesAdmin />
                   </>
                 }
               />

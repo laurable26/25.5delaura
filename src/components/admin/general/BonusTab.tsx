@@ -2,10 +2,49 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../../lib/supabase'
 import type { Profile, Transaction } from '../../../types'
 
+function SignedInput({
+  absValue,
+  sign,
+  onAbsChange,
+  onSignToggle,
+  placeholder,
+}: {
+  absValue: string
+  sign: '+' | '-'
+  onAbsChange: (v: string) => void
+  onSignToggle: () => void
+  placeholder?: string
+}) {
+  return (
+    <div className="flex gap-2">
+      <button
+        type="button"
+        onClick={onSignToggle}
+        className={`w-12 flex-shrink-0 rounded-btn font-bangers text-xl border transition-colors ${
+          sign === '-'
+            ? 'bg-pink-fluo text-white border-pink-fluo'
+            : 'bg-green-50 text-green-700 border-green-200'
+        }`}
+      >
+        {sign}
+      </button>
+      <input
+        type="text"
+        inputMode="decimal"
+        placeholder={placeholder ?? '0'}
+        value={absValue}
+        onChange={(e) => onAbsChange(e.target.value.replace(/[^0-9]/g, ''))}
+        className="flex-1 border border-border rounded-btn px-3 py-2 font-nunito text-purple-dark text-sm bg-bg-main"
+      />
+    </div>
+  )
+}
+
 export function BonusTab() {
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [selectedUserId, setSelectedUserId] = useState('')
-  const [montant, setMontant] = useState('')
+  const [montantSign, setMontantSign] = useState<'+' | '-'>('+')
+  const [montantAbs, setMontantAbs] = useState('')
   const [description, setDescription] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -13,8 +52,8 @@ export function BonusTab() {
   const [recentTransactions, setRecentTransactions] = useState<(Transaction & { prenom?: string })[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Mass bonus/malus
-  const [massMontant, setMassMontant] = useState('')
+  const [massMontantSign, setMassMontantSign] = useState<'+' | '-'>('+')
+  const [massMontantAbs, setMassMontantAbs] = useState('')
   const [massDescription, setMassDescription] = useState('')
   const [massSubmitting, setMassSubmitting] = useState(false)
   const [massSuccess, setMassSuccess] = useState<string | null>(null)
@@ -32,7 +71,6 @@ export function BonusTab() {
           .limit(20),
       ])
       setProfiles(profilesData ?? [])
-
       if (txData && profilesData) {
         const enriched = txData.map((tx) => {
           const profile = profilesData.find((p) => p.id === tx.receveur_id)
@@ -46,13 +84,12 @@ export function BonusTab() {
   }, [])
 
   async function handleSubmit() {
-    if (!selectedUserId || !montant) return
-    const montantNum = parseFloat(montant)
+    if (!selectedUserId || !montantAbs) return
+    const montantNum = parseInt(montantAbs) * (montantSign === '-' ? -1 : 1)
     if (isNaN(montantNum) || montantNum === 0) {
       setError('Montant invalide')
       return
     }
-
     setSubmitting(true)
     setError(null)
     setSuccess(null)
@@ -69,18 +106,17 @@ export function BonusTab() {
       const profile = profiles.find((p) => p.id === selectedUserId)
       const typeLabel = montantNum > 0 ? 'Bonus' : 'Malus'
       setSuccess(`${typeLabel} de ${Math.abs(montantNum)}B appliqué à ${profile?.prenom} !`)
-      setMontant('')
+      setMontantAbs('')
+      setMontantSign('+')
       setDescription('')
       setSelectedUserId('')
 
-      // Refresh recent transactions
       const { data: txData } = await supabase
         .from('transactions')
         .select('*')
         .in('type', ['bonus', 'malus'])
         .order('created_at', { ascending: false })
         .limit(20)
-
       if (txData) {
         const enriched = txData.map((tx) => {
           const p = profiles.find((pr) => pr.id === tx.receveur_id)
@@ -93,7 +129,8 @@ export function BonusTab() {
   }
 
   async function handleMassSubmit() {
-    const montantNum = parseFloat(massMontant)
+    if (!massMontantAbs) return
+    const montantNum = parseInt(massMontantAbs) * (massMontantSign === '-' ? -1 : 1)
     if (isNaN(montantNum) || montantNum === 0) return
     setMassSubmitting(true)
     setError(null)
@@ -113,7 +150,8 @@ export function BonusTab() {
     } else {
       const typeLabel = montantNum > 0 ? 'Bonus' : 'Malus'
       setMassSuccess(`${typeLabel} de ${Math.abs(montantNum)}B appliqué à ${profiles.length} personnes !`)
-      setMassMontant('')
+      setMassMontantAbs('')
+      setMassMontantSign('+')
       setMassDescription('')
       const { data: txData } = await supabase
         .from('transactions')
@@ -171,14 +209,14 @@ export function BonusTab() {
 
         <div>
           <label className="font-nunito text-purple-dark text-sm font-bold block mb-1">
-            Montant <span className="font-normal text-purple-mid">(positif = bonus, négatif = malus)</span>
+            Montant <span className="font-normal text-purple-mid">(appuie sur +/− pour changer le signe)</span>
           </label>
-          <input
-            type="number"
-            placeholder="ex: 50 ou -20"
-            value={montant}
-            onChange={(e) => setMontant(e.target.value)}
-            className="w-full border border-border rounded-btn px-3 py-2 font-nunito text-purple-dark text-sm bg-bg-main"
+          <SignedInput
+            absValue={montantAbs}
+            sign={montantSign}
+            onAbsChange={setMontantAbs}
+            onSignToggle={() => setMontantSign((s) => (s === '+' ? '-' : '+'))}
+            placeholder="ex: 50"
           />
         </div>
 
@@ -197,7 +235,7 @@ export function BonusTab() {
 
         <button
           onClick={handleSubmit}
-          disabled={submitting || !selectedUserId || !montant}
+          disabled={submitting || !selectedUserId || !montantAbs}
           className="py-3 rounded-btn bg-pink-fluo text-white font-nunito font-bold text-base disabled:opacity-50 active:opacity-80"
         >
           {submitting ? 'Application...' : 'Appliquer ⚡'}
@@ -209,14 +247,14 @@ export function BonusTab() {
         <p className="font-bangers text-purple-dark text-lg tracking-wide">⚡ Tout le monde</p>
         <div>
           <label className="font-nunito text-purple-dark text-sm font-bold block mb-1">
-            Montant <span className="font-normal text-purple-mid">(positif = bonus, négatif = malus)</span>
+            Montant <span className="font-normal text-purple-mid">(appuie sur +/− pour changer le signe)</span>
           </label>
-          <input
-            type="number"
-            placeholder="ex: 50 ou -20"
-            value={massMontant}
-            onChange={(e) => setMassMontant(e.target.value)}
-            className="w-full border border-border rounded-btn px-3 py-2 font-nunito text-purple-dark text-sm bg-bg-main"
+          <SignedInput
+            absValue={massMontantAbs}
+            sign={massMontantSign}
+            onAbsChange={setMassMontantAbs}
+            onSignToggle={() => setMassMontantSign((s) => (s === '+' ? '-' : '+'))}
+            placeholder="ex: 50"
           />
         </div>
         <div>
@@ -236,10 +274,10 @@ export function BonusTab() {
         )}
         <button
           onClick={handleMassSubmit}
-          disabled={massSubmitting || !massMontant}
+          disabled={massSubmitting || !massMontantAbs}
           className="py-3 rounded-btn bg-yellow-fest text-purple-dark font-nunito font-bold text-base disabled:opacity-50 active:opacity-80"
         >
-          {massSubmitting ? `Application (0/${profiles.length})...` : `Appliquer à tous (${profiles.length} personnes)`}
+          {massSubmitting ? `Application...` : `Appliquer à tous (${profiles.length} personnes)`}
         </button>
       </div>
 
@@ -251,9 +289,7 @@ export function BonusTab() {
               key={tx.id}
               className="bg-white rounded-card border border-border p-3 flex items-center gap-3"
             >
-              <span className={`text-xl ${tx.type === 'bonus' ? '⚡' : ''}`}>
-                {tx.type === 'bonus' ? '⚡' : '💀'}
-              </span>
+              <span className="text-xl">{tx.type === 'bonus' ? '⚡' : '💀'}</span>
               <div className="flex-1 min-w-0">
                 <p className="font-nunito font-bold text-purple-dark text-sm truncate">
                   {tx.prenom ?? 'Inconnu'}

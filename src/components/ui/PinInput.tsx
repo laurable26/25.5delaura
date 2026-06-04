@@ -6,6 +6,8 @@ interface PinInputProps {
   error?: string | null
 }
 
+const HEART_PATH = "M 50 28 C 50 22, 34 8, 18 16 C 2 24, 2 46, 18 60 L 50 86 L 82 60 C 98 46, 98 24, 82 16 C 66 8, 50 22, 50 28 Z"
+
 export function PinInput({ onComplete, disabled, error }: PinInputProps) {
   const [digits, setDigits] = useState<string[]>(['', '', '', ''])
 
@@ -34,7 +36,7 @@ export function PinInput({ onComplete, disabled, error }: PinInputProps) {
   const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫']
 
   return (
-    <div className="flex flex-col items-center gap-6">
+    <div className="flex flex-col items-center gap-6 w-full">
       {/* Dots */}
       <div className="flex gap-4">
         {digits.map((d, i) => (
@@ -52,7 +54,7 @@ export function PinInput({ onComplete, disabled, error }: PinInputProps) {
       )}
 
       {/* Keypad */}
-      <div className="grid grid-cols-3 gap-4 w-full max-w-sm px-2">
+      <div className="grid grid-cols-3 gap-3 w-full max-w-xs">
         {keys.map((key, i) => {
           if (key === '') return <div key={i} />
           return (
@@ -60,9 +62,23 @@ export function PinInput({ onComplete, disabled, error }: PinInputProps) {
               key={i}
               onClick={() => (key === '⌫' ? handleDelete() : handleDigit(key))}
               disabled={disabled}
-              className="aspect-square w-full rounded-2xl bg-white border border-border text-purple-dark font-nunito font-bold text-xl active:bg-bg-main transition-colors disabled:opacity-50"
+              className="aspect-square w-full relative flex items-center justify-center disabled:opacity-50 active:scale-95 transition-transform"
             >
-              {key}
+              <svg
+                viewBox="0 0 100 100"
+                className="absolute inset-0 w-full h-full"
+                style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.08))' }}
+              >
+                <path
+                  d={HEART_PATH}
+                  fill="white"
+                  stroke="#e2e0ec"
+                  strokeWidth="2"
+                />
+              </svg>
+              <span className="relative z-10 font-nunito font-bold text-purple-dark text-xl leading-none">
+                {key}
+              </span>
             </button>
           )
         })}

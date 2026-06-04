@@ -227,7 +227,7 @@ export function EpreuvesTab() {
                   </div>
                 ) : (
                   <div>
-                    <label className="font-nunito text-xs text-purple-mid block mb-1">Blerhams par point</label>
+                    <label className="font-nunito text-xs text-purple-mid block mb-1">Blerhams max (suggestion)</label>
                     <input type="number" value={formParPoint} onChange={(e) => setFormParPoint(e.target.value)}
                       className="w-full border border-border rounded-btn px-3 py-2 font-nunito text-purple-dark text-sm bg-bg-main" />
                   </div>
@@ -265,7 +265,7 @@ export function EpreuvesTab() {
                       <p className="font-nunito text-purple-mid text-xs mt-0.5">
                         {epreuve.mode === 'gagnant_perdant'
                           ? `🏆 V:${epreuve.blerhams_victoire}B · D:${epreuve.blerhams_defaite}B`
-                          : `📊 ${epreuve.blerhams_par_point}B/pt`}
+                          : `📊 libre (max: ${epreuve.blerhams_par_point ?? '?'}B)`}
                         {epreuve.ordre !== null && ` · #${epreuve.ordre}`}
                       </p>
                     </div>
@@ -303,7 +303,7 @@ export function EpreuvesTab() {
                         </div>
                       ) : (
                         <div>
-                          <label className="font-nunito text-xs text-purple-mid block mb-1">Blerhams par point</label>
+                          <label className="font-nunito text-xs text-purple-mid block mb-1">Blerhams max (suggestion)</label>
                           <input type="number" value={editParPoint} onChange={(e) => setEditParPoint(e.target.value)}
                             className="w-full border border-border rounded-btn px-3 py-2 font-nunito text-purple-dark text-sm bg-bg-main" />
                         </div>

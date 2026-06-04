@@ -108,10 +108,10 @@ interface ConfirmDialogProps {
 function ConfirmDialog({ epreuve, resultat, score, onConfirm, onCancel, submitting }: ConfirmDialogProps) {
   const blerhams = epreuve.mode === 'gagnant_perdant'
     ? (resultat === 'victoire' ? epreuve.blerhams_victoire : epreuve.blerhams_defaite)
-    : (parseInt(score) || 0) * (epreuve.blerhams_par_point ?? 0)
+    : (parseInt(score) || 0)
   const label = epreuve.mode === 'gagnant_perdant'
     ? (resultat === 'victoire' ? '🏆 Victoire' : '💔 Défaite')
-    : `${score} pts`
+    : `${score} B`
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50" onClick={(e) => { if (e.target === e.currentTarget) onCancel() }}>
       <div className="w-full max-w-mobile bg-bg-main rounded-t-2xl p-6 flex flex-col gap-4">
@@ -745,7 +745,7 @@ function JeuView({
               <p className="font-nunito text-purple-mid text-xs">
                 {epreuve.mode === 'gagnant_perdant'
                   ? `Victoire: ${epreuve.blerhams_victoire}B · Défaite: ${epreuve.blerhams_defaite}B`
-                  : `${epreuve.blerhams_par_point}B / point`}
+                  : `Blerhams libres`}
               </p>
 
               {/* Confirmed result */}
@@ -757,7 +757,7 @@ function JeuView({
                       <p className="font-nunito font-bold text-purple-dark text-sm">
                         {epreuve.mode === 'gagnant_perdant'
                           ? (resultatTour.resultat === 'victoire' ? '🏆 Victoire' : '💔 Défaite')
-                          : `${resultatTour.score} pts`}
+                          : `${resultatTour.score} B`}
                       </p>
                       <p className="font-nunito text-yellow-fest text-xs font-bold">+{resultatTour.blerhams_attribues} B</p>
                     </div>
@@ -798,12 +798,12 @@ function JeuView({
                       <input
                         type="text"
                         inputMode="numeric"
-                        placeholder="Nombre de points"
+                        placeholder="Blerhams gagnés"
                         value={draftScore}
                         onChange={(e) => onDraftScore(e.target.value.replace(/[^0-9]/g, ''))}
                         className="flex-1 border border-border rounded-btn px-3 py-2.5 font-nunito text-purple-dark text-base bg-bg-main text-center"
                       />
-                      <span className="font-nunito text-purple-mid text-sm">pts</span>
+                      <span className="font-nunito text-purple-mid text-sm font-bold">B</span>
                     </div>
                   )}
                   {epreuve.mode === 'gagnant_perdant' && draftResultat && (
@@ -816,7 +816,7 @@ function JeuView({
                   {epreuve.mode === 'par_points' && draftScore && (
                     <p className="font-nunito text-center text-sm text-purple-mid">
                       → <span className="font-bold text-yellow-fest">
-                        {(parseInt(draftScore) || 0) * (epreuve.blerhams_par_point ?? 0)} B
+                        {parseInt(draftScore) || 0} B
                       </span> pour votre équipe
                     </p>
                   )}

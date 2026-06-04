@@ -120,7 +120,7 @@ export function EquipesTab() {
             {isConfirmingDelete && (
               <div className="bg-red-50 border border-red-200 rounded-btn p-3 flex items-center justify-between gap-3">
                 <p className="font-nunito text-red-600 text-sm">
-                  Supprimer <strong>{equipe.nom}</strong> ? ({members.length} membre{members.length !== 1 ? 's' : ''} désassignés)
+                  Supprimer <strong>{equipe.nom_choisi ?? equipe.nom}</strong> ? ({members.length} membre{members.length !== 1 ? 's' : ''} désassignés)
                 </p>
                 <div className="flex gap-2 flex-shrink-0">
                   <button
@@ -164,7 +164,14 @@ export function EquipesTab() {
                   {equipe.numero !== null && (
                     <span className="font-bangers text-purple-mid text-base">#{equipe.numero}</span>
                   )}
-                  <p className="font-bangers text-purple-dark text-lg tracking-wide">{equipe.nom}</p>
+                  <div>
+                    <p className="font-bangers text-purple-dark text-lg tracking-wide leading-tight">
+                      {equipe.nom_choisi ?? equipe.nom}
+                    </p>
+                    {equipe.nom_choisi && (
+                      <p className="font-nunito text-purple-mid text-xs leading-tight">{equipe.nom}</p>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -187,7 +194,7 @@ export function EquipesTab() {
               ) : (
                 <div className="flex gap-2 flex-shrink-0">
                   <button
-                    onClick={() => { setRenamingId(equipe.id); setRenameValue(equipe.nom); setRenameNumero(equipe.numero !== null ? String(equipe.numero) : '') }}
+                    onClick={() => { setRenamingId(equipe.id); setRenameValue(equipe.nom_choisi ?? equipe.nom); setRenameNumero(equipe.numero !== null ? String(equipe.numero) : '') }}
                     className="px-3 py-1 rounded-btn bg-bg-main border border-border font-nunito text-purple-mid text-xs active:opacity-70"
                   >
                     ✏️
@@ -242,7 +249,7 @@ export function EquipesTab() {
                   {profiles.filter((p) => p.equipe_id && p.equipe_id !== equipe.id).map((p) => {
                     const eq = equipes.find((e) => e.id === p.equipe_id)
                     return (
-                      <option key={p.id} value={p.id}>{p.prenom} (de {eq?.nom ?? '?'})</option>
+                      <option key={p.id} value={p.id}>{p.prenom} (de {eq?.nom_choisi ?? eq?.nom ?? '?'})</option>
                     )
                   })}
                 </select>

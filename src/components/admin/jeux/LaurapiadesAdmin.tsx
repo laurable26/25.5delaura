@@ -179,7 +179,7 @@ function ControleTab({ session, equipes, profiles, acting, onRpc }: {
               </span>
             </div>
             {tourStatut === 'en_cours' && (
-              <button onClick={() => onRpc('terminer_tour', { p_tour: tourActif })} disabled={acting}
+              <button onClick={() => onRpc('terminer_tour')} disabled={acting}
                 className="py-3 rounded-btn bg-yellow-fest text-purple-dark font-nunito font-bold text-sm disabled:opacity-50 active:opacity-80">
                 {acting ? '...' : '⏹️ Terminer le Tour ' + tourActif + ' (demander les résultats)'}
               </button>

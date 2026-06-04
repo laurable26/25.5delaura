@@ -243,6 +243,12 @@ export function Laurapiades({ profile }: LaurapiadesProps) {
     return () => { supabase.removeChannel(ch) }
   }, [profile.equipe_id, loadData])
 
+  // ── Hooks must be called before any conditional return ────────────────────
+  const teamSchedule = useMemo(
+    () => monEquipe ? computeTeamSchedule(monEquipe, allEquipes, epreuves) : [],
+    [monEquipe, allEquipes, epreuves]
+  )
+
   if (loading) return <div className="flex-1 flex items-center justify-center"><p className="font-nunito text-purple-mid">Chargement...</p></div>
 
   // ── Determine onboarding step ──────────────────────────────────────────────
@@ -329,11 +335,6 @@ export function Laurapiades({ profile }: LaurapiadesProps) {
   }
 
   // ── Result handlers ───────────────────────────────────────────────────────
-  const teamSchedule = useMemo(
-    () => monEquipe ? computeTeamSchedule(monEquipe, allEquipes, epreuves) : [],
-    [monEquipe, allEquipes, epreuves]
-  )
-
   async function handleConfirmResult() {
     if (!monEquipe || tourActif === 0) return
     const currentMatchup = teamSchedule.find((s) => s.tourNum === tourActif)

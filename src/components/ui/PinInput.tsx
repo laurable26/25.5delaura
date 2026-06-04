@@ -52,7 +52,7 @@ export function PinInput({ onComplete, disabled, error }: PinInputProps) {
       )}
 
       {/* Keypad */}
-      <div className="grid grid-cols-3 gap-3 w-full max-w-xs">
+      <div className="grid grid-cols-3 gap-4 w-full max-w-sm px-2">
         {keys.map((key, i) => {
           if (key === '') return <div key={i} />
           return (
@@ -60,7 +60,7 @@ export function PinInput({ onComplete, disabled, error }: PinInputProps) {
               key={i}
               onClick={() => (key === '⌫' ? handleDelete() : handleDigit(key))}
               disabled={disabled}
-              className="h-16 rounded-btn bg-white border border-border text-purple-dark font-nunito font-bold text-xl active:bg-bg-main transition-colors disabled:opacity-50"
+              className="h-16 rounded-btn bg-white border border-border text-purple-dark font-nunito font-bold text-2xl active:bg-bg-main transition-colors disabled:opacity-50"
             >
               {key}
             </button>

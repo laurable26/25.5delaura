@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { supabase } from '../../lib/supabase'
 import type { Epreuve, Equipe, Profile, ResultatEpreuve, LaurapiadesSession, VoteChef } from '../../types'
 
-const PLAN_ILE_URL = 'https://uenqoajlxkirszuifzcu.supabase.co/storage/v1/object/public/assets/plan/ile.jpg'
+const PLAN_ILE_URL = supabase.storage.from('assets').getPublicUrl('plan/ile.jpg').data.publicUrl
 
 const SCHEDULE: [number, number, number][][] = [
   [[0,3,0],[1,4,1],[2,5,2]],
@@ -32,10 +32,11 @@ function computeTeamSchedule(monEquipe: Equipe, equipes: Equipe[], epreuves: Epr
   if (sorted.length !== 6 || sortedEp.length !== 9) return []
   const myIdx = sorted.findIndex((e) => e.id === monEquipe.id)
   if (myIdx < 0) return []
-  return SCHEDULE.map((tour, t) => {
-    const match = tour.find(([a, b]) => a === myIdx || b === myIdx)!
+  return SCHEDULE.flatMap((tour, t) => {
+    const match = tour.find(([a, b]) => a === myIdx || b === myIdx)
+    if (!match) return []
     const [a, b, ep] = match
-    return { tourNum: t + 1, epreuve: sortedEp[ep], adversaire: sorted[a === myIdx ? b : a] }
+    return [{ tourNum: t + 1, epreuve: sortedEp[ep], adversaire: sorted[a === myIdx ? b : a] }]
   })
 }
 
@@ -166,12 +167,13 @@ export function Laurapiades({ profile }: LaurapiadesProps) {
   const isAdmin = profile.role === 'admin_jeux' || profile.role === 'admin_general'
   const isChef = monEquipe?.chef_id === profile.id
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (signal?: AbortSignal) => {
     const [{ data: sess }, { data: ep }, { data: eq }] = await Promise.all([
       supabase.from('laurapiades_sessions').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle(),
       supabase.from('epreuves').select('*').order('ordre', { nullsFirst: false }),
       supabase.from('equipes').select('*').order('numero', { nullsFirst: false }),
     ])
+    if (signal?.aborted) return
     setSession(sess ?? null)
     setEpreuves(ep ?? [])
     setAllEquipes(eq ?? [])
@@ -184,6 +186,7 @@ export function Laurapiades({ profile }: LaurapiadesProps) {
         supabase.from('profiles').select('*').eq('equipe_id', myEquipe.id).order('prenom'),
         supabase.from('votes_chef').select('*').eq('equipe_id', myEquipe.id).eq('votant_id', profile.id).maybeSingle(),
       ])
+      if (signal?.aborted) return
       setCoequipiers(coEq ?? [])
       setMonVote(vote ?? null)
 
@@ -200,7 +203,9 @@ export function Laurapiades({ profile }: LaurapiadesProps) {
   }, [profile.id, profile.equipe_id])
 
   useEffect(() => {
-    loadData()
+    const controller = new AbortController()
+    loadData(controller.signal)
+    return () => controller.abort()
   }, [loadData])
 
   // Realtime: session changes
@@ -308,6 +313,7 @@ export function Laurapiades({ profile }: LaurapiadesProps) {
   async function handleValiderNom() {
     const nom = nomEquipeInput.trim()
     if (!nom) return
+    if (nom.length < 2) { setOnboardingError('Minimum 2 caractères'); return }
     setSavingNom(true)
     setOnboardingError(null)
     const { error } = await supabase.rpc('valider_nom_equipe', {
@@ -323,7 +329,10 @@ export function Laurapiades({ profile }: LaurapiadesProps) {
   }
 
   // ── Result handlers ───────────────────────────────────────────────────────
-  const teamSchedule = monEquipe ? computeTeamSchedule(monEquipe, allEquipes, epreuves) : []
+  const teamSchedule = useMemo(
+    () => monEquipe ? computeTeamSchedule(monEquipe, allEquipes, epreuves) : [],
+    [monEquipe, allEquipes, epreuves]
+  )
 
   async function handleConfirmResult() {
     if (!monEquipe || tourActif === 0) return

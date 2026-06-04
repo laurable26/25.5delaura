@@ -59,28 +59,34 @@ export function BonusTab() {
   const [massSuccess, setMassSuccess] = useState<string | null>(null)
 
   useEffect(() => {
+    let mounted = true
     async function load() {
       setLoading(true)
-      const [{ data: profilesData }, { data: txData }] = await Promise.all([
-        supabase.from('profiles').select('*').order('prenom'),
-        supabase
-          .from('transactions')
-          .select('*')
-          .in('type', ['bonus', 'malus'])
-          .order('created_at', { ascending: false })
-          .limit(20),
-      ])
-      setProfiles(profilesData ?? [])
-      if (txData && profilesData) {
-        const enriched = txData.map((tx) => {
-          const profile = profilesData.find((p) => p.id === tx.receveur_id)
-          return { ...tx, prenom: profile?.prenom }
-        })
-        setRecentTransactions(enriched)
+      try {
+        const [{ data: profilesData }, { data: txData }] = await Promise.all([
+          supabase.from('profiles').select('*').order('prenom'),
+          supabase
+            .from('transactions')
+            .select('*')
+            .in('type', ['bonus', 'malus'])
+            .order('created_at', { ascending: false })
+            .limit(20),
+        ])
+        if (!mounted) return
+        setProfiles(profilesData ?? [])
+        if (txData && profilesData) {
+          const enriched = txData.map((tx) => {
+            const profile = profilesData.find((p) => p.id === tx.receveur_id)
+            return { ...tx, prenom: profile?.prenom }
+          })
+          setRecentTransactions(enriched)
+        }
+      } finally {
+        if (mounted) setLoading(false)
       }
-      setLoading(false)
     }
     load()
+    return () => { mounted = false }
   }, [])
 
   async function handleSubmit() {

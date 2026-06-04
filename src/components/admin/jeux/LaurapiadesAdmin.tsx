@@ -34,19 +34,22 @@ export function LaurapiadesAdmin() {
   const [error, setError] = useState<string | null>(null)
 
   const loadData = useCallback(async () => {
-    const [{ data: sess }, { data: eq }, { data: ep }, { data: pr }, { data: res }] = await Promise.all([
-      supabase.from('laurapiades_sessions').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle(),
-      supabase.from('equipes').select('*').order('numero', { nullsFirst: false }),
-      supabase.from('epreuves').select('*').order('ordre', { nullsFirst: false }),
-      supabase.from('profiles').select('*').order('prenom'),
-      supabase.from('resultats_epreuves').select('*'),
-    ])
-    setSession(sess ?? null)
-    setEquipes(eq ?? [])
-    setEpreuves(ep ?? [])
-    setProfiles(pr ?? [])
-    setResultats(res ?? [])
-    setLoading(false)
+    try {
+      const [{ data: sess }, { data: eq }, { data: ep }, { data: pr }, { data: res }] = await Promise.all([
+        supabase.from('laurapiades_sessions').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle(),
+        supabase.from('equipes').select('*').order('numero', { nullsFirst: false }),
+        supabase.from('epreuves').select('*').order('ordre', { nullsFirst: false }),
+        supabase.from('profiles').select('*').order('prenom'),
+        supabase.from('resultats_epreuves').select('*'),
+      ])
+      setSession(sess ?? null)
+      setEquipes(eq ?? [])
+      setEpreuves(ep ?? [])
+      setProfiles(pr ?? [])
+      setResultats(res ?? [])
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => { loadData() }, [loadData])

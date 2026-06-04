@@ -4,6 +4,8 @@ import { PinInput } from '../ui/PinInput'
 import { usePin } from '../../hooks/usePin'
 import type { Profile } from '../../types'
 
+type Recipient = Pick<Profile, 'id' | 'prenom' | 'photo_url' | 'solde'>
+
 interface TransferModalProps {
   profile: Profile
   onClose: () => void
@@ -12,8 +14,8 @@ interface TransferModalProps {
 
 export function TransferModal({ profile, onClose, onSuccess }: TransferModalProps) {
   const [step, setStep] = useState<'select' | 'amount' | 'pin'>('select')
-  const [guests, setGuests] = useState<Profile[]>([])
-  const [selected, setSelected] = useState<Profile | null>(null)
+  const [guests, setGuests] = useState<Recipient[]>([])
+  const [selected, setSelected] = useState<Recipient | null>(null)
   const [amount, setAmount] = useState('')
   const [loading, setLoading] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
@@ -23,7 +25,7 @@ export function TransferModal({ profile, onClose, onSuccess }: TransferModalProp
     async function loadGuests() {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, prenom, photo_url, solde, pin_hash, equipe_id, role, laurapiades_equipe_confirmee, created_at')
+        .select('id, prenom, photo_url, solde')
         .neq('id', profile.id)
         .order('prenom')
 

@@ -59,11 +59,14 @@ export function RolesTab() {
 
   async function load() {
     setLoading(true)
-    const { data, error: fetchError } = await supabase
-      .from('profiles').select('*').order('prenom')
-    if (fetchError) setError(fetchError.message)
-    else setProfiles(data ?? [])
-    setLoading(false)
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('profiles').select('*').order('prenom')
+      if (fetchError) setError(fetchError.message)
+      else setProfiles(data ?? [])
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function handleRoleChange(userId: string, newRole: UserRole) {

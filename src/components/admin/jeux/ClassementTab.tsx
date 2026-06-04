@@ -3,6 +3,12 @@ import { supabase } from '../../../lib/supabase'
 import { useRealtimeClassement } from '../../../hooks/useRealtime'
 import type { Equipe, Profile, ResultatEpreuve } from '../../../types'
 
+function nomEquipe(eq: Equipe): string {
+  if (eq.nom_choisi) return eq.nom_choisi
+  if (eq.numero !== null) return `#${eq.numero}`
+  return eq.nom
+}
+
 interface EquipeEntry {
   equipe: Equipe
   total: number
@@ -19,32 +25,34 @@ export function ClassementTab() {
   const [loading, setLoading] = useState(true)
 
   const fetchClassement = useCallback(async () => {
-    const [{ data: equipes }, { data: resultats }, { data: profiles }] =
-      await Promise.all([
-        supabase.from('equipes').select('*').order('nom'),
-        supabase.from('resultats_epreuves').select('*'),
-        supabase.from('profiles').select('*').order('prenom'),
-      ])
+    try {
+      const [{ data: equipes }, { data: resultats }, { data: profiles }] =
+        await Promise.all([
+          supabase.from('equipes').select('*').order('numero', { nullsFirst: false }),
+          supabase.from('resultats_epreuves').select('*'),
+          supabase.from('profiles').select('*').order('prenom'),
+        ])
 
-    if (equipes && resultats) {
-      const totals = (equipes as Equipe[]).map((eq) => {
-        const total = (resultats as ResultatEpreuve[])
-          .filter((r) => r.equipe_id === eq.id)
-          .reduce((sum, r) => sum + r.blerhams_attribues, 0)
-        return { equipe: eq, total }
-      })
-      totals.sort((a, b) => b.total - a.total)
-      setEquipeClassement(totals)
+      if (equipes && resultats) {
+        const totals = (equipes as Equipe[]).map((eq) => {
+          const total = (resultats as ResultatEpreuve[])
+            .filter((r) => r.equipe_id === eq.id)
+            .reduce((sum, r) => sum + r.blerhams_attribues, 0)
+          return { equipe: eq, total }
+        })
+        totals.sort((a, b) => b.total - a.total)
+        setEquipeClassement(totals)
+      }
+
+      if (profiles) {
+        const userTotals = (profiles as Profile[])
+          .map((p) => ({ profile: p, total: p.solde }))
+          .sort((a, b) => b.total - a.total)
+        setUserClassement(userTotals)
+      }
+    } finally {
+      setLoading(false)
     }
-
-    if (profiles) {
-      const userTotals = (profiles as Profile[])
-        .map((p) => ({ profile: p, total: p.solde }))
-        .sort((a, b) => b.total - a.total)
-      setUserClassement(userTotals)
-    }
-
-    setLoading(false)
   }, [])
 
   useEffect(() => {
@@ -93,7 +101,7 @@ export function ClassementTab() {
             <span className="font-bangers text-2xl text-purple-mid w-8 text-center">
               {medal(i)}
             </span>
-            <p className="font-nunito font-bold text-purple-dark flex-1">{entry.equipe.nom}</p>
+            <p className="font-nunito font-bold text-purple-dark flex-1">{nomEquipe(entry.equipe)}</p>
             <p className="font-bangers text-xl text-purple-dark">{entry.total} B</p>
           </div>
         ))}

@@ -9,8 +9,8 @@ interface AccesItem {
   admin?: boolean
 }
 
-const SPOTIFY_JAM_URL = 'https://open.spotify.com'
-const POV_URL = 'https://photos.google.com'
+const SPOTIFY_JAM_URL = 'https://open.spotify.com/socialsession/7pSjdKRRmhsfbbR45KPiDl?si=Zj9FGwKSSDClDvCoEiUxeg&utm_source=share-options-sheet&utm_medium=share-link'
+const POV_URL = 'https://pov.camera/qr/A92C2060-6326-4E0D-B20A-6EEF34018F90'
 
 const BASE_ITEMS: AccesItem[] = [
   { label: 'Laurapiades',              emoji: '🏆', action: 'navigate', target: '/laurapiades' },

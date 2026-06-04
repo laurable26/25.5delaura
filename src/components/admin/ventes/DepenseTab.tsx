@@ -23,17 +23,23 @@ export function DepenseTab() {
   const [closedCategories, setClosedCategories] = useState<Set<string>>(new Set())
 
   useEffect(() => {
+    let mounted = true
     async function load() {
       setLoading(true)
-      const [{ data: profilesData }, { data: productsData }] = await Promise.all([
-        supabase.from('profiles').select('*').order('prenom'),
-        supabase.from('products').select('*').eq('actif', true).order('nom'),
-      ])
-      setProfiles(profilesData ?? [])
-      setProducts(productsData ?? [])
-      setLoading(false)
+      try {
+        const [{ data: profilesData }, { data: productsData }] = await Promise.all([
+          supabase.from('profiles').select('*').order('prenom'),
+          supabase.from('products').select('*').eq('actif', true).order('nom'),
+        ])
+        if (!mounted) return
+        setProfiles(profilesData ?? [])
+        setProducts(productsData ?? [])
+      } finally {
+        if (mounted) setLoading(false)
+      }
     }
     load()
+    return () => { mounted = false }
   }, [])
 
   // Watch for transaction status change
@@ -59,9 +65,8 @@ export function DepenseTab() {
             setSelectedUser(null)
             setOrderItems([])
             setError(null)
-            // Refresh profiles for updated solde
-            supabase.from('profiles').select('*').order('prenom').then(({ data }) => {
-              if (data) setProfiles(data)
+            supabase.from('profiles').select('*').order('prenom').then(({ data, error }) => {
+              if (!error && data) setProfiles(data)
             })
           } else if (tx.statut === 'annulee') {
             setPendingTxId(null)

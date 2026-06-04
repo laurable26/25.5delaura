@@ -60,7 +60,7 @@ export function PinInput({ onComplete, disabled, error }: PinInputProps) {
               key={i}
               onClick={() => (key === '⌫' ? handleDelete() : handleDigit(key))}
               disabled={disabled}
-              className="h-16 rounded-btn bg-white border border-border text-purple-dark font-nunito font-bold text-2xl active:bg-bg-main transition-colors disabled:opacity-50"
+              className="aspect-square w-full rounded-2xl bg-white border border-border text-purple-dark font-nunito font-bold text-xl active:bg-bg-main transition-colors disabled:opacity-50"
             >
               {key}
             </button>

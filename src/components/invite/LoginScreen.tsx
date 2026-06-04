@@ -80,7 +80,7 @@ export function LoginScreen() {
           <h1 className="font-bangers text-purple-dark text-5xl tracking-widest">
             25.5 de Laura
           </h1>
-          <p className="font-nunito text-purple-mid mt-1">06.06.2026 🎪</p>
+          <p className="font-nunito text-purple-mid mt-1">06.06.2026</p>
         </div>
 
         {selected ? (

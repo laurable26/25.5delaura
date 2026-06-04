@@ -5,10 +5,11 @@ interface TransferAnimationProps {
   fromSolde: number
   toSolde: number
   coinPhotoUrl?: string | null
+  description?: string | null
   onClose: () => void
 }
 
-export function TransferAnimation({ fromSolde, toSolde, coinPhotoUrl, onClose }: TransferAnimationProps) {
+export function TransferAnimation({ fromSolde, toSolde, coinPhotoUrl, description, onClose }: TransferAnimationProps) {
   const [displayed, setDisplayed] = useState(fromSolde)
   const isIncoming = toSolde > fromSolde
   const delta = Math.abs(toSolde - fromSolde)
@@ -56,6 +57,9 @@ export function TransferAnimation({ fromSolde, toSolde, coinPhotoUrl, onClose }:
           <p className={`font-bangers text-5xl tracking-wide ${isIncoming ? 'text-green-fluo' : 'text-pink-fluo'}`}>
             {isIncoming ? '+' : '-'}{delta} <span className="text-3xl">B</span>
           </p>
+          {description && (
+            <p className="font-nunito text-white text-sm opacity-80 mt-1 text-center italic">« {description} »</p>
+          )}
           <p className="font-nunito text-white text-sm opacity-70 mt-1">Nouveau solde</p>
           <p className="font-bangers text-yellow-fest text-4xl tracking-wide">
             {displayed} <span className="text-2xl">Blerhams</span>

@@ -2,11 +2,6 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../../lib/supabase'
 import type { Epreuve, EpreuveMode, Event } from '../../../types'
 
-const STATUS_LABELS: Record<string, string> = {
-  a_venir: '⏳ À venir',
-  en_cours: '🔥 En cours',
-  termine: '✓ Terminée',
-}
 
 export function EpreuvesTab() {
   const [events, setEvents] = useState<Event[]>([])
@@ -274,10 +269,6 @@ export function EpreuvesTab() {
                         {epreuve.ordre !== null && ` · #${epreuve.ordre}`}
                       </p>
                     </div>
-
-                    <span className="text-xs font-nunito px-2 py-0.5 rounded-full flex-shrink-0 bg-bg-main text-purple-mid">
-                      {STATUS_LABELS[epreuve.statut] ?? epreuve.statut}
-                    </span>
 
                     <div className="flex gap-1 flex-shrink-0">
                       <button onClick={() => isEditing ? setEditingId(null) : startEdit(epreuve)}

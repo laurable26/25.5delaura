@@ -346,7 +346,18 @@ export function CatalogueTab() {
                   >
                     −
                   </button>
-                  <span className="font-bangers text-purple-dark text-xl w-8 text-center">{product.stock}</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={product.stock}
+                    min={0}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value)
+                      if (!isNaN(v) && v >= 0) handleUpdateStock(product.id, v)
+                    }}
+                    disabled={updating === product.id}
+                    className="w-14 text-center border border-border rounded-btn py-1 font-bangers text-purple-dark text-xl bg-bg-main disabled:opacity-50"
+                  />
                   <button
                     onClick={() => handleUpdateStock(product.id, product.stock + 1)}
                     disabled={updating === product.id}

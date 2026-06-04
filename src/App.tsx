@@ -27,7 +27,7 @@ export default function App() {
 
   const { profile, loading: profileLoading, setProfile, refetch } = useProfile(session?.user?.id)
   const [pendingTxId, setPendingTxId] = useState<string | null>(null)
-  const [soldeAnimation, setSoldeAnimation] = useState<{ from: number; to: number } | null>(null)
+  const [soldeAnimation, setSoldeAnimation] = useState<{ from: number; to: number; description?: string | null } | null>(null)
   const prevSoldeRef = useRef<number | null>(null)
 
   const handlePendingTx = useCallback((txId: string) => {
@@ -89,7 +89,17 @@ export default function App() {
   const handleProfileUpdate = useCallback((p: Profile) => {
     const prev = prevSoldeRef.current
     if (prev !== null && prev !== p.solde) {
-      setSoldeAnimation({ from: prev, to: p.solde })
+      supabase
+        .from('transactions')
+        .select('description')
+        .eq('receveur_id', p.id)
+        .in('type', ['bonus', 'malus', 'transfert_recu'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+        .then(({ data }) => {
+          setSoldeAnimation({ from: prev, to: p.solde, description: data?.description ?? null })
+        })
     }
     prevSoldeRef.current = p.solde
     setProfile(p)
@@ -147,6 +157,7 @@ export default function App() {
           fromSolde={soldeAnimation.from}
           toSolde={soldeAnimation.to}
           coinPhotoUrl={coinPhotoUrl}
+          description={soldeAnimation.description}
           onClose={() => setSoldeAnimation(null)}
         />
       )}

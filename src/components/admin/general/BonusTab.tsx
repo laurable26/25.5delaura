@@ -52,12 +52,6 @@ export function BonusTab() {
   const [recentTransactions, setRecentTransactions] = useState<(Transaction & { prenom?: string })[]>([])
   const [loading, setLoading] = useState(true)
 
-  const [massMontantSign, setMassMontantSign] = useState<'+' | '-'>('+')
-  const [massMontantAbs, setMassMontantAbs] = useState('')
-  const [massDescription, setMassDescription] = useState('')
-  const [massSubmitting, setMassSubmitting] = useState(false)
-  const [massSuccess, setMassSuccess] = useState<string | null>(null)
-
   useEffect(() => {
     let mounted = true
     async function load() {
@@ -89,88 +83,58 @@ export function BonusTab() {
     return () => { mounted = false }
   }, [])
 
+  async function refreshTransactions(currentProfiles: typeof profiles) {
+    const { data: txData } = await supabase
+      .from('transactions')
+      .select('*')
+      .in('type', ['bonus', 'malus'])
+      .order('created_at', { ascending: false })
+      .limit(20)
+    if (txData) {
+      setRecentTransactions(txData.map((tx) => ({ ...tx, prenom: currentProfiles.find((p) => p.id === tx.receveur_id)?.prenom })))
+    }
+  }
+
   async function handleSubmit() {
     if (!selectedUserId || !montantAbs) return
     const montantNum = parseInt(montantAbs) * (montantSign === '-' ? -1 : 1)
-    if (isNaN(montantNum) || montantNum === 0) {
-      setError('Montant invalide')
-      return
-    }
+    if (isNaN(montantNum) || montantNum === 0) { setError('Montant invalide'); return }
     setSubmitting(true)
     setError(null)
     setSuccess(null)
 
-    const { error: rpcError } = await supabase.rpc('appliquer_bonus_malus', {
-      p_user_id: selectedUserId,
-      p_montant: montantNum,
-      p_description: description.trim() || null,
-    })
-
-    if (rpcError) {
-      setError(rpcError.message)
+    if (selectedUserId === '__tous__') {
+      const results = await Promise.all(
+        profiles.map((p) =>
+          supabase.rpc('appliquer_bonus_malus', { p_user_id: p.id, p_montant: montantNum, p_description: description.trim() || null })
+        )
+      )
+      const firstErr = results.find((r) => r.error)
+      if (firstErr?.error) {
+        setError(firstErr.error.message)
+      } else {
+        const typeLabel = montantNum > 0 ? 'Bonus' : 'Malus'
+        setSuccess(`${typeLabel} de ${Math.abs(montantNum)}B appliqué à ${profiles.length} personnes !`)
+        setMontantAbs(''); setMontantSign('+'); setDescription(''); setSelectedUserId('')
+        await refreshTransactions(profiles)
+      }
     } else {
-      const profile = profiles.find((p) => p.id === selectedUserId)
-      const typeLabel = montantNum > 0 ? 'Bonus' : 'Malus'
-      setSuccess(`${typeLabel} de ${Math.abs(montantNum)}B appliqué à ${profile?.prenom} !`)
-      setMontantAbs('')
-      setMontantSign('+')
-      setDescription('')
-      setSelectedUserId('')
-
-      const { data: txData } = await supabase
-        .from('transactions')
-        .select('*')
-        .in('type', ['bonus', 'malus'])
-        .order('created_at', { ascending: false })
-        .limit(20)
-      if (txData) {
-        const enriched = txData.map((tx) => {
-          const p = profiles.find((pr) => pr.id === tx.receveur_id)
-          return { ...tx, prenom: p?.prenom }
-        })
-        setRecentTransactions(enriched)
+      const { error: rpcError } = await supabase.rpc('appliquer_bonus_malus', {
+        p_user_id: selectedUserId,
+        p_montant: montantNum,
+        p_description: description.trim() || null,
+      })
+      if (rpcError) {
+        setError(rpcError.message)
+      } else {
+        const profile = profiles.find((p) => p.id === selectedUserId)
+        const typeLabel = montantNum > 0 ? 'Bonus' : 'Malus'
+        setSuccess(`${typeLabel} de ${Math.abs(montantNum)}B appliqué à ${profile?.prenom} !`)
+        setMontantAbs(''); setMontantSign('+'); setDescription(''); setSelectedUserId('')
+        await refreshTransactions(profiles)
       }
     }
     setSubmitting(false)
-  }
-
-  async function handleMassSubmit() {
-    if (!massMontantAbs) return
-    const montantNum = parseInt(massMontantAbs) * (massMontantSign === '-' ? -1 : 1)
-    if (isNaN(montantNum) || montantNum === 0) return
-    setMassSubmitting(true)
-    setError(null)
-    setMassSuccess(null)
-    const results = await Promise.all(
-      profiles.map((p) =>
-        supabase.rpc('appliquer_bonus_malus', {
-          p_user_id: p.id,
-          p_montant: montantNum,
-          p_description: massDescription.trim() || null,
-        })
-      )
-    )
-    const firstErr = results.find((r) => r.error)
-    if (firstErr?.error) {
-      setError(firstErr.error.message)
-    } else {
-      const typeLabel = montantNum > 0 ? 'Bonus' : 'Malus'
-      setMassSuccess(`${typeLabel} de ${Math.abs(montantNum)}B appliqué à ${profiles.length} personnes !`)
-      setMassMontantAbs('')
-      setMassMontantSign('+')
-      setMassDescription('')
-      const { data: txData } = await supabase
-        .from('transactions')
-        .select('*')
-        .in('type', ['bonus', 'malus'])
-        .order('created_at', { ascending: false })
-        .limit(20)
-      if (txData) {
-        const enriched = txData.map((tx) => ({ ...tx, prenom: profiles.find((pr) => pr.id === tx.receveur_id)?.prenom }))
-        setRecentTransactions(enriched)
-      }
-    }
-    setMassSubmitting(false)
   }
 
   if (loading) {
@@ -205,6 +169,7 @@ export function BonusTab() {
             className="w-full border border-border rounded-btn px-3 py-2 font-nunito text-purple-dark text-sm bg-bg-main"
           >
             <option value="">Choisir un utilisateur...</option>
+            <option value="__tous__">⚡ Tous les invités ({profiles.length} personnes)</option>
             {profiles.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.prenom} ({p.solde}B)
@@ -245,45 +210,6 @@ export function BonusTab() {
           className="py-3 rounded-btn bg-pink-fluo text-white font-nunito font-bold text-base disabled:opacity-50 active:opacity-80"
         >
           {submitting ? 'Application...' : 'Appliquer ⚡'}
-        </button>
-      </div>
-
-      {/* Bonus/Malus en masse */}
-      <div className="bg-white rounded-card border border-border p-4 flex flex-col gap-3">
-        <p className="font-bangers text-purple-dark text-lg tracking-wide">⚡ Tout le monde</p>
-        <div>
-          <label className="font-nunito text-purple-dark text-sm font-bold block mb-1">
-            Montant <span className="font-normal text-purple-mid">(appuie sur +/− pour changer le signe)</span>
-          </label>
-          <SignedInput
-            absValue={massMontantAbs}
-            sign={massMontantSign}
-            onAbsChange={setMassMontantAbs}
-            onSignToggle={() => setMassMontantSign((s) => (s === '+' ? '-' : '+'))}
-            placeholder="ex: 50"
-          />
-        </div>
-        <div>
-          <label className="font-nunito text-purple-dark text-sm font-bold block mb-1">
-            Description <span className="font-normal text-purple-mid">(optionnel)</span>
-          </label>
-          <input
-            type="text"
-            placeholder="Raison..."
-            value={massDescription}
-            onChange={(e) => setMassDescription(e.target.value)}
-            className="w-full border border-border rounded-btn px-3 py-2 font-nunito text-purple-dark text-sm bg-bg-main"
-          />
-        </div>
-        {massSuccess && (
-          <p className="font-nunito text-green-700 text-sm bg-green-50 border border-green-200 rounded-btn px-3 py-2">{massSuccess}</p>
-        )}
-        <button
-          onClick={handleMassSubmit}
-          disabled={massSubmitting || !massMontantAbs}
-          className="py-3 rounded-btn bg-yellow-fest text-purple-dark font-nunito font-bold text-base disabled:opacity-50 active:opacity-80"
-        >
-          {massSubmitting ? `Application...` : `Appliquer à tous (${profiles.length} personnes)`}
         </button>
       </div>
 

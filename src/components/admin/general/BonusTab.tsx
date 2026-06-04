@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../../../lib/supabase'
 import type { Profile, Transaction } from '../../../types'
 
@@ -52,48 +52,43 @@ export function BonusTab() {
   const [recentTransactions, setRecentTransactions] = useState<(Transaction & { prenom?: string })[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    let mounted = true
-    async function load() {
-      setLoading(true)
-      try {
-        const [{ data: profilesData }, { data: txData }] = await Promise.all([
-          supabase.from('profiles').select('*').order('prenom'),
-          supabase
-            .from('transactions')
-            .select('*')
-            .in('type', ['bonus', 'malus'])
-            .order('created_at', { ascending: false })
-            .limit(20),
-        ])
-        if (!mounted) return
-        setProfiles(profilesData ?? [])
-        if (txData && profilesData) {
-          const enriched = txData.map((tx) => {
-            const profile = profilesData.find((p) => p.id === tx.receveur_id)
-            return { ...tx, prenom: profile?.prenom }
-          })
-          setRecentTransactions(enriched)
-        }
-      } finally {
-        if (mounted) setLoading(false)
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const [{ data: profilesData }, { data: txData }] = await Promise.all([
+        supabase.from('profiles').select('*').order('prenom'),
+        supabase
+          .from('transactions')
+          .select('*')
+          .in('type', ['bonus', 'malus'])
+          .order('created_at', { ascending: false })
+          .limit(20),
+      ])
+      setProfiles(profilesData ?? [])
+      if (txData && profilesData) {
+        setRecentTransactions(txData.map((tx) => ({
+          ...tx,
+          prenom: profilesData.find((p) => p.id === tx.receveur_id)?.prenom,
+        })))
       }
+    } finally {
+      setLoading(false)
     }
-    load()
-    return () => { mounted = false }
   }, [])
 
-  async function refreshTransactions(currentProfiles: typeof profiles) {
-    const { data: txData } = await supabase
-      .from('transactions')
-      .select('*')
-      .in('type', ['bonus', 'malus'])
-      .order('created_at', { ascending: false })
-      .limit(20)
-    if (txData) {
-      setRecentTransactions(txData.map((tx) => ({ ...tx, prenom: currentProfiles.find((p) => p.id === tx.receveur_id)?.prenom })))
-    }
-  }
+  useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    const channels = [
+      supabase.channel('admin-bonus-profiles')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, load)
+        .subscribe(),
+      supabase.channel('admin-bonus-transactions')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, load)
+        .subscribe(),
+    ]
+    return () => { channels.forEach((ch) => supabase.removeChannel(ch)) }
+  }, [load])
 
   async function handleSubmit() {
     if (!selectedUserId || !montantAbs) return
@@ -116,7 +111,7 @@ export function BonusTab() {
         const typeLabel = montantNum > 0 ? 'Bonus' : 'Malus'
         setSuccess(`${typeLabel} de ${Math.abs(montantNum)}B appliqué à ${profiles.length} personnes !`)
         setMontantAbs(''); setMontantSign('+'); setDescription(''); setSelectedUserId('')
-        await refreshTransactions(profiles)
+        await load()
       }
     } else {
       const { error: rpcError } = await supabase.rpc('appliquer_bonus_malus', {
@@ -131,7 +126,7 @@ export function BonusTab() {
         const typeLabel = montantNum > 0 ? 'Bonus' : 'Malus'
         setSuccess(`${typeLabel} de ${Math.abs(montantNum)}B appliqué à ${profile?.prenom} !`)
         setMontantAbs(''); setMontantSign('+'); setDescription(''); setSelectedUserId('')
-        await refreshTransactions(profiles)
+        await load()
       }
     }
     setSubmitting(false)

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../../../lib/supabase'
 import type { Equipe, Profile } from '../../../types'
 
@@ -23,9 +23,7 @@ export function EquipesTab() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
 
-  useEffect(() => { load() }, [])
-
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true)
     const [{ data: eq }, { data: pr }] = await Promise.all([
       supabase.from('equipes').select('*').order('nom'),
@@ -34,7 +32,21 @@ export function EquipesTab() {
     setEquipes(eq ?? [])
     setProfiles(pr ?? [])
     setLoading(false)
-  }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    const channels = [
+      supabase.channel('admin-equipes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'equipes' }, load)
+        .subscribe(),
+      supabase.channel('admin-equipes-profiles')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, load)
+        .subscribe(),
+    ]
+    return () => { channels.forEach((ch) => supabase.removeChannel(ch)) }
+  }, [load])
 
   async function handleRename(equipeId: string) {
     if (!renameValue.trim()) return

@@ -54,6 +54,21 @@ export function LaurapiadesAdmin() {
 
   useEffect(() => { loadData() }, [loadData])
 
+  useEffect(() => {
+    const channels = [
+      supabase.channel('admin-laurapiades-session')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'laurapiades_sessions' }, loadData)
+        .subscribe(),
+      supabase.channel('admin-laurapiades-equipes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'equipes' }, loadData)
+        .subscribe(),
+      supabase.channel('admin-laurapiades-resultats')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'resultats_epreuves' }, loadData)
+        .subscribe(),
+    ]
+    return () => { channels.forEach((ch) => supabase.removeChannel(ch)) }
+  }, [loadData])
+
   async function rpc(fn: string, params?: Record<string, unknown>) {
     setActing(true)
     setError(null)

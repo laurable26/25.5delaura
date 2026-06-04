@@ -201,6 +201,7 @@ function ControleTab({ session, equipes, profiles, acting, onRpc }: {
         {statut === 'termine' && (
           <p className="font-nunito text-purple-mid text-sm text-center">Les Laurapiades sont terminées !</p>
         )}
+        {session !== null && <ResetButton acting={acting} onRpc={onRpc} />}
       </div>
 
       {/* Onboarding status */}
@@ -227,6 +228,40 @@ function ControleTab({ session, equipes, profiles, acting, onRpc }: {
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+function ResetButton({ acting, onRpc }: { acting: boolean; onRpc: (fn: string) => void }) {
+  const [confirming, setConfirming] = useState(false)
+  if (!confirming) {
+    return (
+      <button
+        onClick={() => setConfirming(true)}
+        className="py-2 rounded-btn bg-bg-main border border-red-200 text-red-400 font-nunito font-bold text-sm active:opacity-70"
+      >
+        🔄 Réinitialiser les Laurapiades
+      </button>
+    )
+  }
+  return (
+    <div className="bg-red-50 border border-red-200 rounded-btn p-3 flex flex-col gap-2">
+      <p className="font-nunito text-red-600 text-sm font-bold">Tout sera effacé : résultats, votes, noms d'équipes, session. Confirmer ?</p>
+      <div className="flex gap-2">
+        <button
+          onClick={() => { onRpc('reinitialiser_laurapiades'); setConfirming(false) }}
+          disabled={acting}
+          className="flex-1 py-2 rounded-btn bg-red-500 text-white font-nunito font-bold text-sm disabled:opacity-50"
+        >
+          {acting ? '...' : 'Oui, réinitialiser'}
+        </button>
+        <button
+          onClick={() => setConfirming(false)}
+          className="px-4 py-2 rounded-btn bg-white border border-border font-nunito text-purple-mid text-sm"
+        >
+          Annuler
+        </button>
+      </div>
     </div>
   )
 }

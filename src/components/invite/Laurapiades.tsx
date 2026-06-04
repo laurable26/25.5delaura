@@ -376,16 +376,20 @@ export function Laurapiades({ profile }: LaurapiadesProps) {
   return (
     <>
       {showMap && <MapViewer onClose={() => setShowMap(false)} />}
-      {confirmingResult && (
-        <ConfirmDialog
-          epreuve={teamSchedule.find((s) => s.tourNum === tourActif)!.epreuve}
-          resultat={draftResultat}
-          score={draftScore}
-          onConfirm={handleConfirmResult}
-          onCancel={() => setConfirmingResult(false)}
-          submitting={submitting}
-        />
-      )}
+      {confirmingResult && (() => {
+        const matchup = teamSchedule.find((s) => s.tourNum === tourActif)
+        if (!matchup) return null
+        return (
+          <ConfirmDialog
+            epreuve={matchup.epreuve}
+            resultat={draftResultat}
+            score={draftScore}
+            onConfirm={handleConfirmResult}
+            onCancel={() => setConfirmingResult(false)}
+            submitting={submitting}
+          />
+        )
+      })()}
 
       <div className="flex flex-col gap-4 px-4 pt-6 pb-10">
         {/* Plan shortcut */}

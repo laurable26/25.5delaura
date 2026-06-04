@@ -72,7 +72,7 @@ export default function App() {
     async function loadCoinPhoto() {
       const { data } = supabase.storage
         .from('assets')
-        .getPublicUrl('coins/blerham.jpg')
+        .getPublicUrl('coins/blehram.png')
       setCoinPhotoUrl(data.publicUrl)
     }
 

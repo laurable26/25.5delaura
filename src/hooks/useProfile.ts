@@ -35,5 +35,18 @@ export function useProfile(userId: string | undefined) {
     fetchProfile()
   }, [userId, fetchProfile])
 
+  useEffect(() => {
+    if (!userId) return
+    const ch = supabase
+      .channel(`profile-${userId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${userId}` },
+        (payload) => { setProfile(payload.new as Profile) }
+      )
+      .subscribe()
+    return () => { supabase.removeChannel(ch) }
+  }, [userId])
+
   return { profile, loading, error, setProfile, refetch: fetchProfile }
 }

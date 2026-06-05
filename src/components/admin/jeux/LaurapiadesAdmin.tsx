@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../../../lib/supabase'
 import type { Equipe, Epreuve, Profile, ResultatEpreuve, LaurapiadesSession } from '../../../types'
 
@@ -52,22 +52,25 @@ export function LaurapiadesAdmin() {
     }
   }, [])
 
+  const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const scheduleReload = useCallback(() => {
+    if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current)
+    reloadTimerRef.current = setTimeout(() => loadData(), 200)
+  }, [loadData])
+
   useEffect(() => { loadData() }, [loadData])
 
   useEffect(() => {
-    const channels = [
-      supabase.channel('admin-laurapiades-session')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'laurapiades_sessions' }, loadData)
-        .subscribe(),
-      supabase.channel('admin-laurapiades-equipes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'equipes' }, loadData)
-        .subscribe(),
-      supabase.channel('admin-laurapiades-resultats')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'resultats_epreuves' }, loadData)
-        .subscribe(),
-    ]
-    return () => { channels.forEach((ch) => supabase.removeChannel(ch)) }
-  }, [loadData])
+    const ch = supabase.channel('admin-laurapiades')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'laurapiades_sessions' }, scheduleReload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'equipes' }, scheduleReload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'resultats_epreuves' }, scheduleReload)
+      .subscribe()
+    return () => {
+      supabase.removeChannel(ch)
+      if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current)
+    }
+  }, [scheduleReload])
 
   async function rpc(fn: string, params?: Record<string, unknown>) {
     setActing(true)

@@ -93,7 +93,7 @@ export default function App() {
         .from('transactions')
         .select('description')
         .eq('receveur_id', p.id)
-        .in('type', ['bonus', 'malus', 'transfert_recu'])
+        .in('type', ['bonus', 'malus', 'transfert'])
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle()

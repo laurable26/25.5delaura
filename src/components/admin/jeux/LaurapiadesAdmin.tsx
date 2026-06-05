@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../../../lib/supabase'
 import type { Equipe, Epreuve, Profile, ResultatEpreuve, LaurapiadesSession } from '../../../types'
 
@@ -52,22 +52,25 @@ export function LaurapiadesAdmin() {
     }
   }, [])
 
+  const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const scheduleReload = useCallback(() => {
+    if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current)
+    reloadTimerRef.current = setTimeout(() => loadData(), 200)
+  }, [loadData])
+
   useEffect(() => { loadData() }, [loadData])
 
   useEffect(() => {
-    const channels = [
-      supabase.channel('admin-laurapiades-session')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'laurapiades_sessions' }, loadData)
-        .subscribe(),
-      supabase.channel('admin-laurapiades-equipes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'equipes' }, loadData)
-        .subscribe(),
-      supabase.channel('admin-laurapiades-resultats')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'resultats_epreuves' }, loadData)
-        .subscribe(),
-    ]
-    return () => { channels.forEach((ch) => supabase.removeChannel(ch)) }
-  }, [loadData])
+    const ch = supabase.channel('admin-laurapiades')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'laurapiades_sessions' }, scheduleReload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'equipes' }, scheduleReload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'resultats_epreuves' }, scheduleReload)
+      .subscribe()
+    return () => {
+      supabase.removeChannel(ch)
+      if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current)
+    }
+  }, [scheduleReload])
 
   async function rpc(fn: string, params?: Record<string, unknown>) {
     setActing(true)
@@ -387,52 +390,62 @@ function ResultatsView({ session, equipes, epreuves, resultats, acting, onRpc }:
                         return (
                           <div key={eq.id} className="flex-1 bg-bg-main rounded-btn p-2 flex flex-col gap-1">
                             <p className="font-nunito font-bold text-purple-dark text-xs truncate">{nomEquipe(eq)}</p>
-                            {res?.confirme ? (
-                              isEditing ? (
-                                <div className="flex flex-col gap-1">
-                                  {epreuve.mode === 'gagnant_perdant' ? (
-                                    <div className="flex gap-1">
-                                      {(['victoire', 'defaite'] as const).map((r) => (
-                                        <button key={r} onClick={() => setEditResultat(r)}
-                                          className={`flex-1 text-xs py-1 rounded font-nunito font-bold border transition-colors ${editResultat === r ? 'bg-yellow-fest border-yellow-fest text-purple-dark' : 'bg-white border-border text-purple-dark'}`}>
-                                          {r === 'victoire' ? '🏆' : '💔'}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  ) : (
-                                    <input type="text" inputMode="numeric" value={editScore}
-                                      onChange={(e) => setEditScore(e.target.value.replace(/[^0-9]/g, ''))}
-                                      className="w-full border border-border rounded px-2 py-1 text-xs font-nunito text-purple-dark bg-white text-center" placeholder="pts" />
-                                  )}
+                            {isEditing ? (
+                              <div className="flex flex-col gap-1">
+                                {epreuve.mode === 'gagnant_perdant' ? (
                                   <div className="flex gap-1">
-                                    <button onClick={() => setEditingId(null)} className="flex-1 text-xs py-1 rounded bg-white border border-border font-nunito text-purple-mid">✕</button>
-                                    <button
-                                      onClick={() => handleAdminCorrect(eq.id, epreuve.id, tourNum)}
-                                      disabled={acting}
-                                      className="flex-1 text-xs py-1 rounded bg-green-fluo text-purple-dark font-nunito font-bold disabled:opacity-50"
-                                    >✓</button>
+                                    {(['victoire', 'defaite'] as const).map((r) => (
+                                      <button key={r} onClick={() => setEditResultat(r)}
+                                        className={`flex-1 text-xs py-1 rounded font-nunito font-bold border transition-colors ${editResultat === r ? 'bg-yellow-fest border-yellow-fest text-purple-dark' : 'bg-white border-border text-purple-dark'}`}>
+                                        {r === 'victoire' ? '🏆' : '💔'}
+                                      </button>
+                                    ))}
                                   </div>
-                                </div>
-                              ) : (
-                                <div className="flex items-center justify-between">
-                                  <p className="font-nunito text-purple-dark text-xs font-bold">
-                                    {epreuve.mode === 'gagnant_perdant'
-                                      ? (res.resultat === 'victoire' ? '🏆 V' : '💔 D')
-                                      : `${res.score} pts`}
-                                    <span className="text-yellow-fest ml-1">+{res.blerhams_attribues}B</span>
-                                  </p>
+                                ) : (
+                                  <input type="text" inputMode="numeric" value={editScore}
+                                    onChange={(e) => setEditScore(e.target.value.replace(/[^0-9]/g, ''))}
+                                    className="w-full border border-border rounded px-2 py-1 text-xs font-nunito text-purple-dark bg-white text-center" placeholder="pts" />
+                                )}
+                                <div className="flex gap-1">
+                                  <button onClick={() => setEditingId(null)} className="flex-1 text-xs py-1 rounded bg-white border border-border font-nunito text-purple-mid">✕</button>
                                   <button
-                                    onClick={() => {
-                                      setEditingId(uid)
-                                      setEditResultat(res.resultat)
-                                      setEditScore(res.score?.toString() ?? '')
-                                    }}
-                                    className="text-purple-mid text-xs underline"
-                                  >✏️</button>
+                                    onClick={() => handleAdminCorrect(eq.id, epreuve.id, tourNum)}
+                                    disabled={acting}
+                                    className="flex-1 text-xs py-1 rounded bg-green-fluo text-purple-dark font-nunito font-bold disabled:opacity-50"
+                                  >✓</button>
                                 </div>
-                              )
+                              </div>
+                            ) : res?.confirme ? (
+                              <div className="flex items-center justify-between">
+                                <p className="font-nunito text-purple-dark text-xs font-bold">
+                                  {epreuve.mode === 'gagnant_perdant'
+                                    ? (res.resultat === 'victoire' ? '🏆 V' : '💔 D')
+                                    : `${res.score} pts`}
+                                  <span className="text-yellow-fest ml-1">+{res.blerhams_attribues}B</span>
+                                </p>
+                                <button
+                                  onClick={() => {
+                                    setEditingId(uid)
+                                    setEditResultat(res.resultat)
+                                    setEditScore(res.score?.toString() ?? '')
+                                  }}
+                                  className="text-purple-mid text-xs underline"
+                                >✏️</button>
+                              </div>
                             ) : (
-                              <p className="font-nunito text-purple-mid text-xs italic">En attente...</p>
+                              <div className="flex items-center justify-between">
+                                <p className="font-nunito text-purple-mid text-xs italic">
+                                  {res ? '⏳ Soumis...' : 'En attente'}
+                                </p>
+                                <button
+                                  onClick={() => {
+                                    setEditingId(uid)
+                                    setEditResultat(res?.resultat ?? null)
+                                    setEditScore(res?.score?.toString() ?? '')
+                                  }}
+                                  className="text-pink-fluo text-xs font-nunito font-bold underline"
+                                >Saisir</button>
+                              </div>
                             )}
                           </div>
                         )

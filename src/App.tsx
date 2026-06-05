@@ -25,18 +25,18 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true)
   const [coinPhotoUrl, setCoinPhotoUrl] = useState<string | null>(null)
 
-  const { profile, loading: profileLoading, setProfile, refetch } = useProfile(session?.user?.id)
-  const [pendingTxId, setPendingTxId] = useState<string | null>(null)
+  const { profile, loading: profileLoading, error: profileError, setProfile, refetch } = useProfile(session?.user?.id)
+  const [pendingTxIds, setPendingTxIds] = useState<string[]>([])
   const [soldeAnimation, setSoldeAnimation] = useState<{ from: number; to: number; description?: string | null } | null>(null)
   const prevSoldeRef = useRef<number | null>(null)
 
   const handlePendingTx = useCallback((txId: string) => {
-    setPendingTxId((prev) => prev ?? txId)
+    setPendingTxIds((prev) => prev.includes(txId) ? prev : [...prev, txId])
   }, [])
 
   useRealtimePendingTransaction(session?.user?.id, handlePendingTx)
 
-  // Fallback: check for pending transactions on mount (in case realtime event was missed)
+  // Fallback: load all pending transactions on mount (in case realtime events were missed)
   useEffect(() => {
     if (!session?.user?.id) return
     supabase
@@ -44,11 +44,14 @@ export default function App() {
       .select('id')
       .eq('receveur_id', session.user.id)
       .eq('statut', 'en_attente')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
+      .order('created_at', { ascending: true })
       .then(({ data }) => {
-        if (data?.id) setPendingTxId((prev) => prev ?? data.id)
+        if (data && data.length > 0) {
+          setPendingTxIds((prev) => {
+            const toAdd = data.map((d) => d.id).filter((id) => !prev.includes(id))
+            return [...prev, ...toAdd]
+          })
+        }
       })
   }, [session?.user?.id])
 
@@ -93,7 +96,7 @@ export default function App() {
         .from('transactions')
         .select('description')
         .eq('receveur_id', p.id)
-        .in('type', ['bonus', 'malus', 'transfert_recu'])
+        .in('type', ['bonus', 'malus', 'transfert'])
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle()
@@ -111,6 +114,21 @@ export default function App() {
         <div className="flex flex-col items-center gap-4">
           <div className="w-16 h-16 rounded-full bg-yellow-fest animate-pulse" />
           <p className="font-nunito text-purple-mid">Chargement...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (profileError) {
+    return (
+      <div className="min-h-screen bg-bg-main flex items-center justify-center px-6">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <span className="text-4xl">⚠️</span>
+          <p className="font-bangers text-purple-dark text-2xl tracking-wide">Erreur de chargement</p>
+          <p className="font-nunito text-purple-mid text-sm">{profileError}</p>
+          <button onClick={refetch} className="mt-2 px-6 py-3 rounded-btn bg-pink-fluo text-white font-nunito font-bold text-sm">
+            Réessayer
+          </button>
         </div>
       </div>
     )
@@ -145,11 +163,11 @@ export default function App() {
         onProfileUpdate={handleProfileUpdate}
         onLogout={() => setSession(null)}
       />
-      {pendingTxId && profile && (
+      {pendingTxIds[0] && profile && (
         <DepenseConfirmModal
-          transactionId={pendingTxId}
+          transactionId={pendingTxIds[0]}
           pinHash={profile.pin_hash}
-          onDone={() => { setPendingTxId(null); refetch() }}
+          onDone={() => { setPendingTxIds((prev) => prev.slice(1)); refetch() }}
         />
       )}
       {soldeAnimation && (

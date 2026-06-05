@@ -16,6 +16,7 @@ export function DepenseConfirmModal({ transactionId, pinHash, onDone }: DepenseC
   const [loading, setLoading] = useState(true)
   const [processing, setProcessing] = useState(false)
   const [done, setDone] = useState(false)
+  const [rpcError, setRpcError] = useState<string | null>(null)
   const { checkPin, verifying, error: pinError } = usePin(pinHash)
 
   useEffect(() => {
@@ -47,6 +48,7 @@ export function DepenseConfirmModal({ transactionId, pinHash, onDone }: DepenseC
     if (!valid) return
 
     setProcessing(true)
+    setRpcError(null)
     const { error } = await supabase.rpc('valider_depense', {
       p_transaction_id: transactionId,
     })
@@ -54,6 +56,8 @@ export function DepenseConfirmModal({ transactionId, pinHash, onDone }: DepenseC
     if (!error) {
       setDone(true)
       setTimeout(onDone, 1800)
+    } else {
+      setRpcError(error.message)
     }
     setProcessing(false)
   }
@@ -125,7 +129,7 @@ export function DepenseConfirmModal({ transactionId, pinHash, onDone }: DepenseC
               <PinInput
                 onComplete={handlePin}
                 disabled={verifying || processing}
-                error={pinError}
+                error={pinError ?? rpcError}
               />
             </div>
 

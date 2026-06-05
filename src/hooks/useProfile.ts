@@ -37,15 +37,23 @@ export function useProfile(userId: string | undefined) {
 
   useEffect(() => {
     if (!userId) return
-    const ch = supabase
-      .channel(`profile-${userId}`)
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${userId}` },
-        (payload) => { setProfile(payload.new as Profile) }
-      )
-      .subscribe()
-    return () => { supabase.removeChannel(ch) }
+    // Use a unique channel name per mount to avoid "cannot add callbacks after subscribe()" if
+    // the effect fires twice before cleanup (concurrent mode / fast refresh).
+    const channelName = `profile-${userId}-${Date.now()}`
+    let ch: ReturnType<typeof supabase.channel> | null = null
+    try {
+      ch = supabase
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${userId}` },
+          (payload) => { setProfile(payload.new as Profile) }
+        )
+        .subscribe()
+    } catch {
+      // Non-critical: solde will still update on next manual refetch
+    }
+    return () => { if (ch) supabase.removeChannel(ch) }
   }, [userId])
 
   return { profile, loading, error, setProfile, refetch: fetchProfile }

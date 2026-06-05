@@ -172,6 +172,8 @@ export function Laurapiades({ profile }: LaurapiadesProps) {
   const isAdmin = profile.role === 'admin_jeux' || profile.role === 'admin_general'
   const isChef = monEquipe?.chef_id === profile.id
 
+  const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   const loadData = useCallback(async (signal?: AbortSignal) => {
     const [{ data: sess }, { data: ep }, { data: eq }] = await Promise.all([
       supabase.from('laurapiades_sessions').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle(),
@@ -207,46 +209,37 @@ export function Laurapiades({ profile }: LaurapiadesProps) {
     setLoading(false)
   }, [profile.id, profile.equipe_id])
 
+  // Debounce realtime reloads: each user adds a random jitter (300-700ms) so 37 users
+  // don't all hit the DB in the same millisecond when a broadcast fires
+  const scheduleReload = useCallback(() => {
+    if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current)
+    reloadTimerRef.current = setTimeout(() => loadData(), 300 + Math.random() * 400)
+  }, [loadData])
+
   useEffect(() => {
     const controller = new AbortController()
     loadData(controller.signal)
-    return () => controller.abort()
+    return () => {
+      controller.abort()
+      if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current)
+    }
   }, [loadData])
 
-  // Realtime: session changes
+  // Single consolidated channel per user (4 → 1) to stay within Supabase connection limits
   useEffect(() => {
-    const ch = supabase.channel('laurapiades-session')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'laurapiades_sessions' }, () => loadData())
-      .subscribe()
-    return () => { supabase.removeChannel(ch) }
-  }, [loadData])
+    const filters: Parameters<typeof supabase.channel>[0] = `laurapiades-${profile.id}`
+    const ch = supabase.channel(filters)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'laurapiades_sessions' }, scheduleReload)
 
-  // Realtime: my equipe changes (chef_id, nom_choisi)
-  useEffect(() => {
-    if (!profile.equipe_id) return
-    const ch = supabase.channel('laurapiades-equipe')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'equipes', filter: `id=eq.${profile.equipe_id}` }, () => loadData())
-      .subscribe()
-    return () => { supabase.removeChannel(ch) }
-  }, [profile.equipe_id, loadData])
+    if (profile.equipe_id) {
+      ch.on('postgres_changes', { event: '*', schema: 'public', table: 'equipes', filter: `id=eq.${profile.equipe_id}` }, scheduleReload)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'votes_chef', filter: `equipe_id=eq.${profile.equipe_id}` }, scheduleReload)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'resultats_epreuves', filter: `equipe_id=eq.${profile.equipe_id}` }, scheduleReload)
+    }
 
-  // Realtime: votes changes for my team
-  useEffect(() => {
-    if (!profile.equipe_id) return
-    const ch = supabase.channel('laurapiades-votes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'votes_chef', filter: `equipe_id=eq.${profile.equipe_id}` }, () => loadData())
-      .subscribe()
+    ch.subscribe()
     return () => { supabase.removeChannel(ch) }
-  }, [profile.equipe_id, loadData])
-
-  // Realtime: resultats changes
-  useEffect(() => {
-    if (!profile.equipe_id) return
-    const ch = supabase.channel('laurapiades-resultats')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'resultats_epreuves', filter: `equipe_id=eq.${profile.equipe_id}` }, () => loadData())
-      .subscribe()
-    return () => { supabase.removeChannel(ch) }
-  }, [profile.equipe_id, loadData])
+  }, [profile.id, profile.equipe_id, scheduleReload])
 
   // ── Hooks must be called before any conditional return ────────────────────
   const teamSchedule = useMemo(

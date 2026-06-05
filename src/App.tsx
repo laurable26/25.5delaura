@@ -26,17 +26,17 @@ export default function App() {
   const [coinPhotoUrl, setCoinPhotoUrl] = useState<string | null>(null)
 
   const { profile, loading: profileLoading, error: profileError, setProfile, refetch } = useProfile(session?.user?.id)
-  const [pendingTxId, setPendingTxId] = useState<string | null>(null)
+  const [pendingTxIds, setPendingTxIds] = useState<string[]>([])
   const [soldeAnimation, setSoldeAnimation] = useState<{ from: number; to: number; description?: string | null } | null>(null)
   const prevSoldeRef = useRef<number | null>(null)
 
   const handlePendingTx = useCallback((txId: string) => {
-    setPendingTxId((prev) => prev ?? txId)
+    setPendingTxIds((prev) => prev.includes(txId) ? prev : [...prev, txId])
   }, [])
 
   useRealtimePendingTransaction(session?.user?.id, handlePendingTx)
 
-  // Fallback: check for pending transactions on mount (in case realtime event was missed)
+  // Fallback: load all pending transactions on mount (in case realtime events were missed)
   useEffect(() => {
     if (!session?.user?.id) return
     supabase
@@ -44,11 +44,14 @@ export default function App() {
       .select('id')
       .eq('receveur_id', session.user.id)
       .eq('statut', 'en_attente')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
+      .order('created_at', { ascending: true })
       .then(({ data }) => {
-        if (data?.id) setPendingTxId((prev) => prev ?? data.id)
+        if (data && data.length > 0) {
+          setPendingTxIds((prev) => {
+            const toAdd = data.map((d) => d.id).filter((id) => !prev.includes(id))
+            return [...prev, ...toAdd]
+          })
+        }
       })
   }, [session?.user?.id])
 
@@ -160,11 +163,11 @@ export default function App() {
         onProfileUpdate={handleProfileUpdate}
         onLogout={() => setSession(null)}
       />
-      {pendingTxId && profile && (
+      {pendingTxIds[0] && profile && (
         <DepenseConfirmModal
-          transactionId={pendingTxId}
+          transactionId={pendingTxIds[0]}
           pinHash={profile.pin_hash}
-          onDone={() => { setPendingTxId(null); refetch() }}
+          onDone={() => { setPendingTxIds((prev) => prev.slice(1)); refetch() }}
         />
       )}
       {soldeAnimation && (

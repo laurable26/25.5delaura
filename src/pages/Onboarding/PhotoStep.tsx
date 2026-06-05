@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 
 interface PhotoStepProps {
@@ -11,11 +11,22 @@ export function PhotoStep({ userId, onNext }: PhotoStepProps) {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const previewUrlRef = useRef<string | null>(null)
+
+  // Revoke blob URL on unmount to avoid memory leaks
+  useEffect(() => {
+    return () => {
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
+    }
+  }, [])
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    setPreview(URL.createObjectURL(file))
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
+    const url = URL.createObjectURL(file)
+    previewUrlRef.current = url
+    setPreview(url)
   }
 
   async function handleUpload() {
@@ -24,7 +35,7 @@ export function PhotoStep({ userId, onNext }: PhotoStepProps) {
     setUploading(true)
     setError(null)
 
-    const ext = file.name.split('.').pop()
+    const ext = file.name.includes('.') ? file.name.split('.').pop()!.toLowerCase() : 'jpg'
     const path = `${userId}.${ext}`
 
     const { error: uploadError } = await supabase.storage

@@ -164,6 +164,11 @@ export function Laurapiades({ profile }: LaurapiadesProps) {
   const [incoherentWarning, setIncoherentWarning] = useState(false)
   const [resettingTour, setResettingTour] = useState(false)
 
+  // Reset incoherent warning when the active tour changes
+  useEffect(() => {
+    setIncoherentWarning(false)
+  }, [session?.tour_actif])
+
   const isAdmin = profile.role === 'admin_jeux' || profile.role === 'admin_general'
   const isChef = monEquipe?.chef_id === profile.id
 

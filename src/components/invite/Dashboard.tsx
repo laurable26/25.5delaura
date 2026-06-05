@@ -56,7 +56,7 @@ function getItems(role: UserRole): AccesItem[] {
 
 export function Dashboard({ profile, onProfileUpdate }: DashboardProps) {
   const [showTransfer, setShowTransfer] = useState(false)
-  const [flags, setFlags] = useState<Record<string, boolean>>({})
+  const [flags, setFlags] = useState<Record<string, boolean> | null>(null)
   const navigate = useNavigate()
 
   const handleUpdate = useCallback((updated: Profile) => {
@@ -67,7 +67,7 @@ export function Dashboard({ profile, onProfileUpdate }: DashboardProps) {
 
   useEffect(() => {
     supabase.from('feature_flags').select('key, enabled').then(({ data }) => {
-      if (data) setFlags(Object.fromEntries(data.map((f) => [f.key, f.enabled])))
+      setFlags(data ? Object.fromEntries(data.map((f) => [f.key, f.enabled])) : {})
     })
   }, [])
 
@@ -89,7 +89,8 @@ export function Dashboard({ profile, onProfileUpdate }: DashboardProps) {
   const isAdmin = profile.role !== 'invite'
   const items = getItems(profile.role).map((item) => ({
     ...item,
-    locked: !isAdmin && !!item.flagKey && flags[item.flagKey] === false,
+    // locked while flags load (null) or if the flag exists and is not true
+    locked: !isAdmin && !!item.flagKey && (flags === null || !flags[item.flagKey]),
   }))
 
   return (

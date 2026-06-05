@@ -15,6 +15,7 @@ interface TransferModalProps {
 export function TransferModal({ profile, onClose, onSuccess }: TransferModalProps) {
   const [step, setStep] = useState<'select' | 'amount' | 'pin'>('select')
   const [guests, setGuests] = useState<Recipient[]>([])
+  const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<Recipient | null>(null)
   const [amount, setAmount] = useState('')
   const [loading, setLoading] = useState(false)
@@ -79,8 +80,17 @@ export function TransferModal({ profile, onClose, onSuccess }: TransferModalProp
         {step === 'select' && (
           <div className="flex flex-col gap-3">
             <p className="font-nunito text-purple-mid text-sm mb-2">Choisir un ami :</p>
+            {guests.length > 5 && (
+              <input
+                type="text"
+                placeholder="Rechercher..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full border border-border rounded-btn px-4 py-3 font-nunito text-purple-dark bg-white outline-none"
+              />
+            )}
             {fetchError && <p className="text-pink-fluo font-nunito text-sm">{fetchError}</p>}
-            {guests.map((g) => (
+            {guests.filter((g) => g.prenom.toLowerCase().includes(search.toLowerCase())).map((g) => (
               <button
                 key={g.id}
                 onClick={() => { setSelected(g); setStep('amount') }}

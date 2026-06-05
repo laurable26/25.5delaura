@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { useRealtimeClassement } from '../../../hooks/useRealtime'
-import type { Equipe, Profile, ResultatEpreuve } from '../../../types'
+import type { Equipe, Profile } from '../../../types'
 
 function nomEquipe(eq: Equipe): string {
   if (eq.nom_choisi) return eq.nom_choisi
@@ -26,18 +26,17 @@ export function ClassementTab() {
 
   const fetchClassement = useCallback(async () => {
     try {
-      const [{ data: equipes }, { data: resultats }, { data: profiles }] =
+      const [{ data: equipes }, { data: profiles }] =
         await Promise.all([
           supabase.from('equipes').select('*').order('numero', { nullsFirst: false }),
-          supabase.from('resultats_epreuves').select('*'),
           supabase.from('profiles').select('*').order('prenom'),
         ])
 
-      if (equipes && resultats) {
+      if (equipes && profiles) {
         const totals = (equipes as Equipe[]).map((eq) => {
-          const total = (resultats as ResultatEpreuve[])
-            .filter((r) => r.equipe_id === eq.id)
-            .reduce((sum, r) => sum + r.blerhams_attribues, 0)
+          const total = (profiles as Profile[])
+            .filter((p) => p.equipe_id === eq.id)
+            .reduce((sum, p) => sum + p.solde, 0)
           return { equipe: eq, total }
         })
         totals.sort((a, b) => b.total - a.total)

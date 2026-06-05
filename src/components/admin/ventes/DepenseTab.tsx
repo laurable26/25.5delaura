@@ -67,6 +67,7 @@ export function DepenseTab() {
             setError(null)
             supabase.from('profiles').select('*').order('prenom').then(({ data, error }) => {
               if (!error && data) setProfiles(data)
+              else if (error) setError('Erreur lors du rechargement des profils')
             })
           } else if (tx.statut === 'annulee') {
             setPendingTxId(null)

@@ -25,7 +25,7 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true)
   const [coinPhotoUrl, setCoinPhotoUrl] = useState<string | null>(null)
 
-  const { profile, loading: profileLoading, setProfile, refetch } = useProfile(session?.user?.id)
+  const { profile, loading: profileLoading, error: profileError, setProfile, refetch } = useProfile(session?.user?.id)
   const [pendingTxId, setPendingTxId] = useState<string | null>(null)
   const [soldeAnimation, setSoldeAnimation] = useState<{ from: number; to: number; description?: string | null } | null>(null)
   const prevSoldeRef = useRef<number | null>(null)
@@ -111,6 +111,21 @@ export default function App() {
         <div className="flex flex-col items-center gap-4">
           <div className="w-16 h-16 rounded-full bg-yellow-fest animate-pulse" />
           <p className="font-nunito text-purple-mid">Chargement...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (profileError) {
+    return (
+      <div className="min-h-screen bg-bg-main flex items-center justify-center px-6">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <span className="text-4xl">⚠️</span>
+          <p className="font-bangers text-purple-dark text-2xl tracking-wide">Erreur de chargement</p>
+          <p className="font-nunito text-purple-mid text-sm">{profileError}</p>
+          <button onClick={refetch} className="mt-2 px-6 py-3 rounded-btn bg-pink-fluo text-white font-nunito font-bold text-sm">
+            Réessayer
+          </button>
         </div>
       </div>
     )

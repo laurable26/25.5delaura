@@ -40,14 +40,14 @@ export function TransferModal({ profile, onClose, onSuccess }: TransferModalProp
 
   async function handlePin(pin: string) {
     const valid = await checkPin(pin)
-    if (!valid) return
+    if (!valid || !selected) return
 
     const montant = parseInt(amount, 10)
     setLoading(true)
     try {
       const { error } = await supabase.rpc('transfer_blerhams', {
         p_emetteur_id: profile.id,
-        p_receveur_id: selected!.id,
+        p_receveur_id: selected.id,
         p_montant: montant,
       })
 
